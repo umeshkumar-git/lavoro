@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Lavoro - Your Daily Assistant Agent</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<div class="container">
+			<header>
+				<h1>
+					<img
+						src="lavoro-logo.png"
+						alt="Lavoro Logo"
+						id="app-logo"
+					/>
+					Lavoro: Personal Daily Assistant
+				</h1>
+			</header>
+
+			<div class="quick-actions">
+				<button onclick="quickAction('Give me my morning briefing')">
+					📅 Morning Briefing
+				</button>
+				<button onclick="quickAction('Summarize my important emails')">
+					📧 Email Summary
+				</button>
+				<button
+					onclick="quickAction('What should I prioritize today?')"
+				>
+					⭐ Prioritize Tasks
+				</button>
+				<button onclick="quickAction('Plan my day')">
+					🗓️ Plan My Day
+				</button>
+			</div>
+
+			<div class="chat-container">
+				<div id="chatMessages" class="chat-messages"></div>
+
+				<div class="input-container">
+					<input
+						type="text"
+						id="userInput"
+						placeholder="Ask me anything about your day..."
+						onkeypress="handleKeyPress(event)"
+					/>
+					<button onclick="sendMessage()">Send</button>
+				</div>
+			</div>
+
+			<div class="footer">
+				<button onclick="resetChat()" class="reset-btn">
+					🔄 Reset Chat
+				</button>
+			</div>
+		</div>
+
+		<script src="script.js"></script>
+	</body>
+</html>

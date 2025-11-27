@@ -1,0 +1,236 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	min-height: 100vh;
+	padding: 20px;
+}
+
+.container {
+	max-width: 800px;
+	margin: 0 auto;
+	background: white;
+	border-radius: 20px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+	overflow: hidden;
+}
+
+header {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	padding: 30px;
+	text-align: center;
+}
+
+header h1 {
+	font-size: 2em;
+	margin-bottom: 10px;
+
+	/* ADD these lines to help align the logo and text */
+	display: flex;
+	align-items: center;
+	justify-content: center; /* Center the whole title element */
+}
+
+#app-logo {
+	/* Adjust these values to make the logo clearly visible */
+	width: 48px; /* Increase from 32px, or even larger if needed */
+	height: 48px; /* Maintain aspect ratio (same as width for square logos) */
+
+	vertical-align: middle;
+	margin-right: 10px;
+}
+
+/* Ensure the h1 element also allows for proper alignment */
+.container h1 {
+	display: flex; /* Allows flexbox properties for internal alignment */
+	align-items: center; /* Vertically aligns items within the h1 */
+	font-size: 2em; /* You might want to adjust the text size here too */
+	margin-bottom: 0; /* Remove default bottom margin if it creates extra space */
+}
+
+/* You might need to adjust the font size of the surrounding text if the logo is too big compared to it */
+.container p {
+	margin-top: 5px; /* Adjust top margin if h1 margin-bottom was removed */
+	font-size: 1em;
+}
+
+header p {
+	opacity: 0.9;
+	font-size: 1.1em;
+}
+
+.quick-actions {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 10px;
+	padding: 20px;
+	background: #f8f9fa;
+	border-bottom: 2px solid #e9ecef;
+}
+
+.quick-actions button {
+	padding: 12px 20px;
+	border: none;
+	background: white;
+	border-radius: 10px;
+	cursor: pointer;
+	font-size: 0.95em;
+	font-weight: 500;
+	transition: all 0.3s;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.quick-actions button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+	background: #667eea;
+	color: white;
+}
+
+.chat-container {
+	height: 500px;
+	display: flex;
+	flex-direction: column;
+}
+
+.chat-messages {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px;
+	background: #f8f9fa;
+}
+
+.message {
+	margin-bottom: 15px;
+	padding: 12px 16px;
+	border-radius: 12px;
+	max-width: 80%;
+	animation: fadeIn 0.3s;
+	white-space: pre-wrap;
+	line-height: 1.6;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.user-message {
+	background: #667eea;
+	color: white;
+	margin-left: auto;
+	border-bottom-right-radius: 4px;
+}
+
+.assistant-message {
+	background: white;
+	color: #333;
+	border-bottom-left-radius: 4px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.loading {
+	display: inline-block;
+	padding: 12px 16px;
+	background: white;
+	border-radius: 12px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.loading::after {
+	content: "...";
+	animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+	0%,
+	20% {
+		content: ".";
+	}
+	40% {
+		content: "..";
+	}
+	60%,
+	100% {
+		content: "...";
+	}
+}
+
+.input-container {
+	display: flex;
+	gap: 10px;
+	padding: 20px;
+	background: white;
+	border-top: 2px solid #e9ecef;
+}
+
+.input-container input {
+	flex: 1;
+	padding: 12px 16px;
+	border: 2px solid rgb(68, 65, 65);
+	border-radius: 10px;
+	font-size: 1em;
+	outline: none;
+	transition: border 0.3s;
+}
+
+.input-container input:focus {
+	border-color: #667eea;
+}
+
+.input-container button {
+	padding: 12px 30px;
+	background: #667eea;
+	color: white;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	font-weight: 600;
+	transition: all 0.3s;
+}
+
+.input-container button:hover {
+	background: #5568d3;
+	transform: translateY(-1px);
+}
+
+.footer {
+	padding: 15px 20px;
+	background: #f8f9fa;
+	text-align: center;
+}
+
+.reset-btn {
+	padding: 10px 25px;
+	background: #6c757d;
+	color: white;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	font-weight: 500;
+	transition: all 0.3s;
+}
+
+.reset-btn:hover {
+	background: #5a6268;
+}
+
+.error {
+	background: #f8d7da;
+	color: #721c24;
+	padding: 12px;
+	border-radius: 8px;
+	margin: 10px;
+}
