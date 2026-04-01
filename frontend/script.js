@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = "https://api.lavoro.umeshshah.in";
 
 function addMessage(content, isUser = false) {
 	const messagesDiv = document.getElementById("chatMessages");
@@ -92,12 +92,11 @@ function handleKeyPress(event) {
 // Welcome message on load
 window.onload = () => {
 	addMessage(
-	  "<div style='line-height:1.5;'>" +
-		"<span style='font-size:22px; font-weight:600;'>👋 Welcome to Your Personal Assistant!</span><br><br>" +
-		"<span style='font-size:16px;'>I'm here to help you manage your daily tasks, schedule, emails, and more. " +
-		"Get started by clicking one of the quick actions above or simply type your question below.</span>" +
-	  "</div>",
-	  false
+		"<div style='line-height:1.5;'>" +
+			"<span style='font-size:22px; font-weight:600;'>👋 Welcome to Your Personal Assistant!</span><br><br>" +
+			"<span style='font-size:16px;'>I'm here to help you manage your daily tasks, schedule, emails, and more. " +
+			"Get started by clicking one of the quick actions above or simply type your question below.</span>" +
+			"</div>",
+		false
 	);
-  };
-  
+};
