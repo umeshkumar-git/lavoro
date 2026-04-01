@@ -30,33 +30,25 @@ app.post("/api/chat", async (req, res) => {
 		const { message } = req.body;
 
 		const model = genAI.getGenerativeModel({
-			model: "gemini-1.5-flash",
+			model: "gemini-1.5-flash-latest",
 		});
 
-		const prompt = `
-You are a smart personal assistant.
-User: ${message}
-Give helpful and short response.
-`;
-
-		const result = await model.generateContent(prompt);
-		const response = await result.response;
-		const text = response.text();
+		const result = await model.generateContent(message);
+		const text = result.response.text();
 
 		res.json({
 			success: true,
 			message: text,
 		});
 	} catch (error) {
-		console.error("AI ERROR:", error);
+		console.error("AI ERROR:", error); // VERY IMPORTANT
 
-		res.json({
+		res.status(500).json({
 			success: false,
-			error: "AI failed",
+			message: "AI failed",
 		});
 	}
 });
-
 // ✅ Reset API
 app.post("/api/reset", (req, res) => {
 	res.json({
