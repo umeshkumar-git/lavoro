@@ -3,10 +3,10 @@ const cors = require("cors");
 
 const app = express();
 
-// ✅ Proper CORS config
+// ✅ FIXED CORS
 app.use(
 	cors({
-		origin: "https://umeshshah.in",
+		origin: ["https://umeshshah.in", "https://www.umeshshah.in"],
 		methods: ["GET", "POST"],
 		allowedHeaders: ["Content-Type"],
 	})
@@ -14,12 +14,12 @@ app.use(
 
 app.use(express.json());
 
-// Test route
+// ✅ Health check
 app.get("/", (req, res) => {
 	res.send("Lavoro backend is running 🚀");
 });
 
-// Chat route
+// ✅ Chat API
 app.post("/api/chat", (req, res) => {
 	const { message } = req.body;
 
@@ -29,7 +29,7 @@ app.post("/api/chat", (req, res) => {
 	});
 });
 
-// Reset route
+// ✅ Reset API
 app.post("/api/reset", (req, res) => {
 	res.json({
 		success: true,
@@ -37,6 +37,7 @@ app.post("/api/reset", (req, res) => {
 	});
 });
 
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
 	console.log(`Server running on port ${PORT}`);
