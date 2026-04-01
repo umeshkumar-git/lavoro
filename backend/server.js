@@ -1,10 +1,11 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 
-// ✅ FIXED CORS
+// ✅ CORS (important for your domain)
 app.use(
 	cors({
 		origin: ["https://umeshshah.in", "https://www.umeshshah.in"],
@@ -15,20 +16,27 @@ app.use(
 
 app.use(express.json());
 
+// ✅ Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 // ✅ Health check
 app.get("/", (req, res) => {
 	res.send("Lavoro backend is running 🚀");
 });
 
 // ✅ Chat API
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 app.post("/api/chat", async (req, res) => {
 	try {
 		const { message } = req.body;
 
+		if (!message) {
+			return res.status(400).json({
+				success: false,
+				message: "Message is required",
+			});
+		}
+
+		// ✅ IMPORTANT: correct model
 		const model = genAI.getGenerativeModel({
 			model: "gemini-pro",
 		});
@@ -42,7 +50,10 @@ app.post("/api/chat", async (req, res) => {
 			message: text,
 		});
 	} catch (error) {
-		console.error("AI ERROR:", error); // VERY IMPORTANT
+		console.error(
+			"FULL AI ERROR:",
+			error?.response?.data || error.message || error
+		);
 
 		res.status(500).json({
 			success: false,
@@ -50,6 +61,7 @@ app.post("/api/chat", async (req, res) => {
 		});
 	}
 });
+
 // ✅ Reset API
 app.post("/api/reset", (req, res) => {
 	res.json({
