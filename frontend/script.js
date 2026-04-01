@@ -1,4 +1,4 @@
-const API_URL = "https://api.lavoro.umeshshah.in";
+const API_URL = "https://api.lavoro.umeshshah.in";	
 
 function addMessage(content, isUser = false) {
 	const messagesDiv = document.getElementById("chatMessages");

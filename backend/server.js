@@ -1,36 +1,35 @@
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
 
 const app = express();
 
-// ✅ CORS (allow your frontend)
+// ✅ Proper CORS config
 app.use(
 	cors({
 		origin: "https://umeshshah.in",
+		methods: ["GET", "POST"],
+		allowedHeaders: ["Content-Type"],
 	})
 );
 
-// ✅ Middleware
 app.use(express.json());
 
-// ✅ Test route
+// Test route
 app.get("/", (req, res) => {
 	res.send("Lavoro backend is running 🚀");
 });
 
-// ✅ Chat API (IMPORTANT for your frontend)
+// Chat route
 app.post("/api/chat", (req, res) => {
 	const { message } = req.body;
 
-	// simple test response (you can replace with AI logic)
 	res.json({
 		success: true,
 		message: `You said: ${message}`,
 	});
 });
 
-// ✅ Reset API
+// Reset route
 app.post("/api/reset", (req, res) => {
 	res.json({
 		success: true,
@@ -38,9 +37,7 @@ app.post("/api/reset", (req, res) => {
 	});
 });
 
-// ✅ Start server
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
 	console.log(`Server running on port ${PORT}`);
 });
