@@ -26,16 +26,39 @@ app.get("/", (req, res) => {
 
 // ✅ Chat API
 app.post("/api/chat", async (req, res) => {
-	try {
-		const { message } = req.body;
+  try {
+    const { message } = req.body;
 
-		if (!message) {
-			return res.status(400).json({
-				success: false,
-				message: "Message is required",
-			});
-		}
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
 
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash", // ✅ USE THIS NOW
+    });
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: message }] }],
+    });
+
+    const text = result.response.text();
+
+    res.json({
+      success: true,
+      message: text,
+    });
+  } catch (error) {
+    console.error("FULL ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "AI failed",
+    });
+  }
+});
 		// ✅ IMPORTANT: correct model
 		const model = genAI.getGenerativeModel({
 			model: "gemini-pro",
