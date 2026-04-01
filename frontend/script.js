@@ -65,7 +65,7 @@ async function sendMessage() {
 		if (data.success) {
 			addMessage(data.message, false);
 		} else {
-			addMessage(`Error: ${data.error}`, false);
+			addMessage(`Error: ${data.message || "AI failed"}`, false);
 		}
 	} catch (error) {
 		hideLoading();
