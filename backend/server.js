@@ -5,7 +5,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 
-// ✅ CORS (important for your domain)
+// ✅ CORS
 app.use(
 	cors({
 		origin: ["https://umeshshah.in", "https://www.umeshshah.in"],
@@ -16,71 +16,51 @@ app.use(
 
 app.use(express.json());
 
-// ✅ Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 // ✅ Health check
 app.get("/", (req, res) => {
 	res.send("Lavoro backend is running 🚀");
 });
 
-// ✅ Chat API
+// ✅ Gemini setup
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// ✅ Chat API (FIXED)
 app.post("/api/chat", async (req, res) => {
-  try {
-    const { message } = req.body;
+	try {
+		const { message } = req.body;
 
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        message: "Message is required",
-      });
-    }
+		if (!message) {
+			return res.status(400).json({
+				success: false,
+				message: "Message is required",
+			});
+		}
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-    });
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: message }] }],
-    });
-
-    const text = result.response.text();
-
-    res.json({
-      success: true,
-      message: text,
-    });
-  } catch (error) {
-    console.error("FULL ERROR:", error);
-
-    res.status(500).json({
-      success: false,
-      message: error.message || "AI failed",
-    });
-  }
-});
-		// ✅ IMPORTANT: correct model
 		const model = genAI.getGenerativeModel({
-			model: "gemini-pro",
+			model: "gemini-1.5-flash",
 		});
 
-		const result = await model.generateContent(message);
-		const response = await result.response;
-		const text = response.text();
+		const result = await model.generateContent({
+			contents: [
+				{
+					role: "user",
+					parts: [{ text: message }],
+				},
+			],
+		});
+
+		const text = result.response.text();
 
 		res.json({
 			success: true,
 			message: text,
 		});
 	} catch (error) {
-		console.error(
-			"FULL AI ERROR:",
-			error?.response?.data || error.message || error
-		);
+		console.error("FULL ERROR:", error);
 
 		res.status(500).json({
 			success: false,
-			message: "AI failed",
+			message: error.message || "AI failed",
 		});
 	}
 });
