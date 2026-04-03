@@ -5,13 +5,14 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 
-// ✅ CORS (FIXED)
+// ✅ 1. CORS Configuration
 app.use(
 	cors({
 		origin: [
 			"https://lavoro.umeshshah.in",
 			"https://umeshshah.in",
 			"https://www.umeshshah.in",
+			"http://localhost:3000", // Added for local testing
 		],
 		methods: ["GET", "POST"],
 	})
@@ -19,13 +20,23 @@ app.use(
 
 app.use(express.json());
 
-// ✅ Health check
+// ✅ 2. Initialize Gemini (This was the missing piece!)
+// Ensure GEMINI_API_KEY is in your .env file
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Define the model once at the top level for efficiency
+const model = genAI.getGenerativeModel({
+	model: "gemini-1.5-flash",
+	systemInstruction:
+		"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
+});
+
+// ✅ 3. Health check
 app.get("/", (req, res) => {
 	res.send("Lavoro backend is running 🚀");
 });
 
-// ✅ Gemini setup
-// ✅ Chat API
+// ✅ 4. Chat API
 app.post("/api/chat", async (req, res) => {
 	try {
 		const { message } = req.body;
@@ -36,14 +47,7 @@ app.post("/api/chat", async (req, res) => {
 				.json({ success: false, message: "Message is required" });
 		}
 
-		// 1. Initialize the model with System Instructions
-		const model = genAI.getGenerativeModel({
-			model: "gemini-1.5-flash",
-			systemInstruction:
-				"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
-		});
-
-		// 2. Generate content and wait for the full response
+		// Generate content using the model defined above
 		const result = await model.generateContent(message);
 		const response = await result.response;
 		const text = response.text();
@@ -60,17 +64,18 @@ app.post("/api/chat", async (req, res) => {
 		console.error("❌ Gemini ERROR:", error);
 		res.status(500).json({
 			success: false,
-			message: error.message,
+			message: "AI service error. Check backend logs.",
 		});
 	}
 });
-// ✅ Reset API
+
+// ✅ 5. Reset API (Placeholder for clearing session/history)
 app.post("/api/reset", (req, res) => {
-	res.json({ success: true });
+	res.json({ success: true, message: "Chat reset successfully" });
 });
 
-// ✅ Start server
+// ✅ 6. Start server
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+	console.log(`Lavoro server running on port ${PORT}`);
 });
