@@ -1,13 +1,11 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-
-// ✅ NEW SDK
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 
-// ✅ CORS
+// ✅ CORS (FIXED)
 app.use(
 	cors({
 		origin: [
@@ -15,12 +13,10 @@ app.use(
 			"https://umeshshah.in",
 			"https://www.umeshshah.in",
 		],
-		methods: ["GET", "POST", "OPTIONS"],
-		allowedHeaders: ["Content-Type"],
+		methods: ["GET", "POST"],
 	})
 );
 
-app.options("*", cors());
 app.use(express.json());
 
 // ✅ Health check
@@ -31,50 +27,39 @@ app.get("/", (req, res) => {
 // ✅ Gemini setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ Chat API (WORKING)
+// ✅ Chat API
 app.post("/api/chat", async (req, res) => {
 	try {
 		const { message } = req.body;
 
-		if (!message) {
-			return res.status(400).json({
-				success: false,
-				message: "Message is required",
-			});
-		}
-
 		const model = genAI.getGenerativeModel({
-			model: "gemini-pro", // ✅ correct model
+			model: "gemini-1.5-flash",
 		});
 
 		const result = await model.generateContent(message);
-		const response = await result.response;
-		const text = response.text();
+		const text = result.response.text();
 
 		res.json({
 			success: true,
 			message: text,
 		});
 	} catch (error) {
-		console.error("FULL ERROR:", error);
+		console.error(error);
 
 		res.status(500).json({
 			success: false,
-			message: error.message || "AI failed",
+			message: "AI failed",
 		});
 	}
 });
 
 // ✅ Reset API
 app.post("/api/reset", (req, res) => {
-	res.json({
-		success: true,
-		message: "Chat reset successful",
-	});
+	res.json({ success: true });
 });
 
 // ✅ Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
 	console.log(`Server running on port ${PORT}`);
 });
