@@ -25,32 +25,28 @@ app.get("/", (req, res) => {
 });
 
 // ✅ Gemini setup
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 // ✅ Chat API
 app.post("/api/chat", async (req, res) => {
 	try {
 		const { message } = req.body;
 
 		if (!message) {
-			return res.status(400).json({
-				success: false,
-				message: "Message is required",
-			});
+			return res
+				.status(400)
+				.json({ success: false, message: "Message is required" });
 		}
 
-		if (!process.env.GEMINI_API_KEY) {
-			throw new Error("Missing GEMINI_API_KEY in environment");
-		}
-
+		// 1. Initialize the model with System Instructions
 		const model = genAI.getGenerativeModel({
 			model: "gemini-1.5-flash",
+			systemInstruction:
+				"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
 		});
 
+		// 2. Generate content and wait for the full response
 		const result = await model.generateContent(message);
-
-		// ✅ safer parsing
-		const text = result?.response?.text();
+		const response = await result.response;
+		const text = response.text();
 
 		if (!text) {
 			throw new Error("Empty response from Gemini");
@@ -61,11 +57,10 @@ app.post("/api/chat", async (req, res) => {
 			message: text,
 		});
 	} catch (error) {
-		console.error("❌ Gemini ERROR FULL:", error);
-
+		console.error("❌ Gemini ERROR:", error);
 		res.status(500).json({
 			success: false,
-			message: error.message, // 🔥 show real error
+			message: error.message,
 		});
 	}
 });
