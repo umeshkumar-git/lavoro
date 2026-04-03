@@ -26,7 +26,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Define the model once at the top level for efficiency
 const model = genAI.getGenerativeModel({
-	model: "gemini-1.5-flash-latest",
+	model: "models/gemini-1.5-flash", // Use the full resource name
 	systemInstruction:
 		"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
 });
