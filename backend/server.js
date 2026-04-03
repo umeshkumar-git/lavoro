@@ -25,6 +25,7 @@ app.use(express.json());
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Define the model once at the top level for efficiency
+// Initialize the model with the 'models/' prefix
 const model = genAI.getGenerativeModel({
 	model: "models/gemini-1.5-flash", // Use the full resource name
 	systemInstruction:
