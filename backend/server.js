@@ -32,27 +32,43 @@ app.post("/api/chat", async (req, res) => {
 	try {
 		const { message } = req.body;
 
+		if (!message) {
+			return res.status(400).json({
+				success: false,
+				message: "Message is required",
+			});
+		}
+
+		if (!process.env.GEMINI_API_KEY) {
+			throw new Error("Missing GEMINI_API_KEY in environment");
+		}
+
 		const model = genAI.getGenerativeModel({
 			model: "gemini-1.5-flash",
 		});
 
 		const result = await model.generateContent(message);
-		const text = result.response.text();
+
+		// ✅ safer parsing
+		const text = result?.response?.text();
+
+		if (!text) {
+			throw new Error("Empty response from Gemini");
+		}
 
 		res.json({
 			success: true,
 			message: text,
 		});
 	} catch (error) {
-		console.error(error);
+		console.error("❌ Gemini ERROR FULL:", error);
 
 		res.status(500).json({
 			success: false,
-			message: "AI failed",
+			message: error.message, // 🔥 show real error
 		});
 	}
 });
-
 // ✅ Reset API
 app.post("/api/reset", (req, res) => {
 	res.json({ success: true });
