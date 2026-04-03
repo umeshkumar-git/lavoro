@@ -10,12 +10,17 @@ const app = express();
 // ✅ CORS
 app.use(
 	cors({
-		origin: ["https://umeshshah.in", "https://www.umeshshah.in"],
-		methods: ["GET", "POST"],
+		origin: [
+			"https://lavoro.umeshshah.in",
+			"https://umeshshah.in",
+			"https://www.umeshshah.in",
+		],
+		methods: ["GET", "POST", "OPTIONS"],
 		allowedHeaders: ["Content-Type"],
 	})
 );
 
+app.options("*", cors());
 app.use(express.json());
 
 // ✅ Health check
