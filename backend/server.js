@@ -6,13 +6,15 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const app = express();
 
 // ✅ 1. CORS Configuration
+// Restricted to your personal domains for security
 app.use(
 	cors({
 		origin: [
 			"https://lavoro.umeshshah.in",
 			"https://umeshshah.in",
 			"https://www.umeshshah.in",
-			"http://localhost:3000", // Added for local testing
+			"http://localhost:3000",
+			"http://localhost:5173",
 		],
 		methods: ["GET", "POST"],
 	})
@@ -20,22 +22,34 @@ app.use(
 
 app.use(express.json());
 
-// ✅ 2. Initialize Gemini (This was the missing piece!)
-// Ensure GEMINI_API_KEY is in your .env file
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// ✅ 2. Initialize Gemini
+let model;
 
-// Define the model once at the top level for efficiency
-// Initialize the model with the 'models/' prefix
-// This uses the current 2026 stable model name
-const model = genAI.getGenerativeModel({
-	model: "gemini-3-flash", // Force use of stable v1 endpoint instead of v1beta, // Use the full resource name
-	systemInstruction:
-		"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
-});
+try {
+	const apiKey = process.env.GEMINI_API_KEY;
+	if (!apiKey) {
+		throw new Error(
+			"GEMINI_API_KEY is missing from environment variables."
+		);
+	}
 
-// ✅ 3. Health check
+	const genAI = new GoogleGenerativeAI(apiKey);
+
+	// Using the April 2026 stable preview name
+	model = genAI.getGenerativeModel({
+		model: "gemini-3-flash-preview",
+		systemInstruction:
+			"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
+	});
+
+	console.log("✅ Gemini AI initialized successfully.");
+} catch (err) {
+	console.error("❌ Critical Initialization Error:", err.message);
+}
+
+// ✅ 3. Health Check
 app.get("/", (req, res) => {
-	res.send("Lavoro backend is running 🚀");
+	res.send("Lavoro Backend is Online 🚀");
 });
 
 // ✅ 4. Chat API
@@ -46,38 +60,46 @@ app.post("/api/chat", async (req, res) => {
 		if (!message) {
 			return res
 				.status(400)
-				.json({ success: false, message: "Message is required" });
+				.json({ success: false, message: "No message provided." });
 		}
 
-		// Generate content using the model defined above
+		if (!model) {
+			return res
+				.status(503)
+				.json({ success: false, message: "AI model not initialized." });
+		}
+
+		// Generate response
 		const result = await model.generateContent(message);
 		const response = await result.response;
 		const text = response.text();
-
-		if (!text) {
-			throw new Error("Empty response from Gemini");
-		}
 
 		res.json({
 			success: true,
 			message: text,
 		});
 	} catch (error) {
-		console.error("❌ Gemini ERROR:", error);
+		console.error("❌ Chat API Error:", error.message);
+
+		// Check for common 404/model errors
+		const errorMessage = error.message.includes("404")
+			? "Model version outdated. Please check gemini-api settings."
+			: "Lavoro is temporarily unavailable.";
+
 		res.status(500).json({
 			success: false,
-			message: "AI service error. Check backend logs.",
+			message: errorMessage,
+			details: error.message,
 		});
 	}
 });
 
-// ✅ 5. Reset API (Placeholder for clearing session/history)
-app.post("/api/reset", (req, res) => {
-	res.json({ success: true, message: "Chat reset successfully" });
-});
-
-// ✅ 6. Start server
+// ✅ 5. Start Server
+// Port 10000 is the standard for Render
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, "0.0.0.0", () => {
-	console.log(`Lavoro server running on port ${PORT}`);
+	console.log(`-----------------------------------------`);
+	console.log(`Lavoro Server running on Port: ${PORT}`);
+	console.log(`Domain: https://api.lavoro.umeshshah.in`);
+	console.log(`-----------------------------------------`);
 });
