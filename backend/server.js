@@ -26,11 +26,16 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Define the model once at the top level for efficiency
 // Initialize the model with the 'models/' prefix
-const model = genAI.getGenerativeModel({
-	model: "models/gemini-1.5-flash", // Use the full resource name
-	systemInstruction:
-		"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
-});
+const model = genAI.getGenerativeModel(
+	{
+		model: "gemini-1.5-flash",
+	},
+	{
+		apiVersion: "v1", // Force use of stable v1 endpoint instead of v1beta, // Use the full resource name
+		systemInstruction:
+			"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
+	}
+);
 
 // ✅ 3. Health check
 app.get("/", (req, res) => {
