@@ -17,7 +17,7 @@ app.use(
 			"http://localhost:5173",
 		],
 		methods: ["GET", "POST"],
-	})
+	}),
 );
 
 app.use(express.json());
@@ -29,15 +29,15 @@ try {
 	const apiKey = process.env.GEMINI_API_KEY;
 	if (!apiKey) {
 		throw new Error(
-			"GEMINI_API_KEY is missing from environment variables."
+			"GEMINI_API_KEY is missing from environment variables.",
 		);
 	}
 
 	const genAI = new GoogleGenerativeAI(apiKey);
 
-	// Using the April 2026 stable preview name
+	// Using a stable and available Gemini model
 	model = genAI.getGenerativeModel({
-		model: "gemini-3-flash-preview",
+		model: "gemini-1.5-flash",
 		systemInstruction:
 			"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
 	});
@@ -79,14 +79,33 @@ app.post("/api/chat", async (req, res) => {
 			message: text,
 		});
 	} catch (error) {
-		console.error("❌ Chat API Error:", error.message);
+		console.error("❌ Chat API Error:", error);
+		console.error("Error message:", error.message);
+		console.error("Error details:", error);
 
-		// Check for common 404/model errors
-		const errorMessage = error.message.includes("404")
-			? "Model version outdated. Please check gemini-api settings."
-			: "Lavoro is temporarily unavailable.";
+		// Check for common errors
+		let errorMessage = "Lavoro is temporarily unavailable.";
+		let statusCode = 500;
 
-		res.status(500).json({
+		if (error.message.includes("404")) {
+			errorMessage =
+				"Model version not available. Please contact support.";
+		} else if (
+			error.message.includes("401") ||
+			error.message.includes("authentication")
+		) {
+			errorMessage =
+				"API authentication failed. Please check server configuration.";
+			statusCode = 401;
+		} else if (error.message.includes("429")) {
+			errorMessage = "Too many requests. Please try again later.";
+			statusCode = 429;
+		} else if (error.message.includes("PERMISSION_DENIED")) {
+			errorMessage = "API permission denied. Please check your API key.";
+			statusCode = 403;
+		}
+
+		res.status(statusCode).json({
 			success: false,
 			message: errorMessage,
 			details: error.message,
@@ -94,22 +113,21 @@ app.post("/api/chat", async (req, res) => {
 	}
 });
 
-
 // ✅ 5. Reset Chat
 app.post("/api/reset", (req, res) => {
-try {
-// Reset chat session (clear any conversation context if needed)
-res.json({
-success: true,
-message: "Chat reset successfully.",
-});
-} catch (error) {
-console.error("❌ Reset API Error:", error.message);
-res.status(500).json({
-success: false,
-message: "Failed to reset chat.",
-});
-}
+	try {
+		// Reset chat session (clear any conversation context if needed)
+		res.json({
+			success: true,
+			message: "Chat reset successfully.",
+		});
+	} catch (error) {
+		console.error("❌ Reset API Error:", error.message);
+		res.status(500).json({
+			success: false,
+			message: "Failed to reset chat.",
+		});
+	}
 });
 
 // ✅ 6. Start Server

@@ -151,14 +151,32 @@ async function sendMessage() {
 
 		console.log("📡 Status:", response.status);
 
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-		}
-
 		const data = await response.json();
 		console.log("📦 Data:", data);
 
 		hideLoading();
+
+		if (!response.ok) {
+			// Handle HTTP errors
+			if (response.status === 401 || response.status === 403) {
+				showError(
+					"⚠️ API Authentication Error: Please check your API key configuration.",
+				);
+			} else if (response.status === 429) {
+				showError(
+					"⏳ Too many requests. Please wait a moment and try again.",
+				);
+			} else if (response.status === 500) {
+				showError(
+					`Server Error: ${data.message || "Please try again later."}`,
+				);
+			} else {
+				showError(
+					`Error (${response.status}): ${data.message || response.statusText}`,
+				);
+			}
+			return;
+		}
 
 		if (data.success) {
 			addMessage(data.message, false);
@@ -169,9 +187,12 @@ async function sendMessage() {
 		hideLoading();
 		console.error("❌ Error:", error);
 
-		if (error.message.includes("fetch")) {
+		if (
+			error.message.includes("Failed to fetch") ||
+			error.message.includes("fetch")
+		) {
 			showError(
-				"Unable to connect to server. Please check your connection.",
+				"❌ Connection Error: Unable to reach the server. Please check your connection.",
 			);
 		} else {
 			showError(`Error: ${error.message}`);
