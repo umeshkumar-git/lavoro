@@ -17,7 +17,7 @@ app.use(
 			"http://localhost:5173",
 		],
 		methods: ["GET", "POST"],
-	})
+	}),
 );
 
 app.use(express.json());
@@ -29,7 +29,7 @@ try {
 	const apiKey = process.env.GEMINI_API_KEY;
 	if (!apiKey) {
 		throw new Error(
-			"GEMINI_API_KEY is missing from environment variables."
+			"GEMINI_API_KEY is missing from environment variables.",
 		);
 	}
 
@@ -88,9 +88,14 @@ app.post("/api/chat", async (req, res) => {
 		let statusCode = 500;
 
 		if (error.message.includes("404")) {
-			errorMessage = "Model version not available. Please contact support.";
-		} else if (error.message.includes("401") || error.message.includes("authentication")) {
-			errorMessage = "API authentication failed. Please check server configuration.";
+			errorMessage =
+				"Model version not available. Please contact support.";
+		} else if (
+			error.message.includes("401") ||
+			error.message.includes("authentication")
+		) {
+			errorMessage =
+				"API authentication failed. Please check server configuration.";
 			statusCode = 401;
 		} else if (error.message.includes("429")) {
 			errorMessage = "Too many requests. Please try again later.";
@@ -108,22 +113,21 @@ app.post("/api/chat", async (req, res) => {
 	}
 });
 
-
 // ✅ 5. Reset Chat
 app.post("/api/reset", (req, res) => {
-try {
-// Reset chat session (clear any conversation context if needed)
-res.json({
-success: true,
-message: "Chat reset successfully.",
-});
-} catch (error) {
-console.error("❌ Reset API Error:", error.message);
-res.status(500).json({
-success: false,
-message: "Failed to reset chat.",
-});
-}
+	try {
+		// Reset chat session (clear any conversation context if needed)
+		res.json({
+			success: true,
+			message: "Chat reset successfully.",
+		});
+	} catch (error) {
+		console.error("❌ Reset API Error:", error.message);
+		res.status(500).json({
+			success: false,
+			message: "Failed to reset chat.",
+		});
+	}
 });
 
 // ✅ 6. Start Server

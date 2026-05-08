@@ -159,13 +159,21 @@ async function sendMessage() {
 		if (!response.ok) {
 			// Handle HTTP errors
 			if (response.status === 401 || response.status === 403) {
-				showError("⚠️ API Authentication Error: Please check your API key configuration.");
+				showError(
+					"⚠️ API Authentication Error: Please check your API key configuration.",
+				);
 			} else if (response.status === 429) {
-				showError("⏳ Too many requests. Please wait a moment and try again.");
+				showError(
+					"⏳ Too many requests. Please wait a moment and try again.",
+				);
 			} else if (response.status === 500) {
-				showError(`Server Error: ${data.message || "Please try again later."}`);
+				showError(
+					`Server Error: ${data.message || "Please try again later."}`,
+				);
 			} else {
-				showError(`Error (${response.status}): ${data.message || response.statusText}`);
+				showError(
+					`Error (${response.status}): ${data.message || response.statusText}`,
+				);
 			}
 			return;
 		}
@@ -179,7 +187,10 @@ async function sendMessage() {
 		hideLoading();
 		console.error("❌ Error:", error);
 
-		if (error.message.includes("Failed to fetch") || error.message.includes("fetch")) {
+		if (
+			error.message.includes("Failed to fetch") ||
+			error.message.includes("fetch")
+		) {
 			showError(
 				"❌ Connection Error: Unable to reach the server. Please check your connection.",
 			);
