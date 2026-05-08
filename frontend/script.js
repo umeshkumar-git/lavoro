@@ -2,41 +2,41 @@ const API_URL = "http://localhost:10000";
 
 // Theme management
 function initTheme() {
-	const savedTheme = localStorage.getItem('theme') || 'light';
-	
+	const savedTheme = localStorage.getItem("theme") || "light";
+
 	// Remove existing theme classes
-	document.body.classList.remove('light-theme', 'dark-theme');
+	document.body.classList.remove("light-theme", "dark-theme");
 	// Add the current theme class
-	document.body.classList.add(savedTheme + '-theme');
-	
+	document.body.classList.add(savedTheme + "-theme");
+
 	updateThemeIcon(savedTheme);
 }
 
 function toggleTheme() {
-	const isDark = document.body.classList.contains('dark-theme');
-	const newTheme = isDark ? 'light' : 'dark';
+	const isDark = document.body.classList.contains("dark-theme");
+	const newTheme = isDark ? "light" : "dark";
 
 	// Remove existing theme classes
-	document.body.classList.remove('light-theme', 'dark-theme');
+	document.body.classList.remove("light-theme", "dark-theme");
 	// Add the new theme class
-	document.body.classList.add(newTheme + '-theme');
-	
-	localStorage.setItem('theme', newTheme);
+	document.body.classList.add(newTheme + "-theme");
+
+	localStorage.setItem("theme", newTheme);
 	updateThemeIcon(newTheme);
 }
 
 function updateThemeIcon(theme) {
-	const themeToggle = document.getElementById('themeToggle');
+	const themeToggle = document.getElementById("themeToggle");
 	if (themeToggle) {
-		const sunIcon = themeToggle.querySelector('.fa-sun');
-		const moonIcon = themeToggle.querySelector('.fa-moon');
+		const sunIcon = themeToggle.querySelector(".fa-sun");
+		const moonIcon = themeToggle.querySelector(".fa-moon");
 
-		if (theme === 'dark') {
-			if (sunIcon) sunIcon.style.opacity = '0';
-			if (moonIcon) moonIcon.style.opacity = '1';
+		if (theme === "dark") {
+			if (sunIcon) sunIcon.style.opacity = "0";
+			if (moonIcon) moonIcon.style.opacity = "1";
 		} else {
-			if (sunIcon) sunIcon.style.opacity = '1';
-			if (moonIcon) moonIcon.style.opacity = '0';
+			if (sunIcon) sunIcon.style.opacity = "1";
+			if (moonIcon) moonIcon.style.opacity = "0";
 		}
 	}
 }
@@ -46,13 +46,15 @@ function addMessage(content, isUser = false) {
 	const messagesDiv = document.getElementById("chatMessages");
 
 	// Remove welcome message if it exists
-	const welcomeMessage = messagesDiv.querySelector('.welcome-message');
+	const welcomeMessage = messagesDiv.querySelector(".welcome-message");
 	if (welcomeMessage) {
 		welcomeMessage.remove();
 	}
 
 	const messageDiv = document.createElement("div");
-	messageDiv.className = isUser ? "message user-message" : "message assistant-message";
+	messageDiv.className = isUser
+		? "message user-message"
+		: "message assistant-message";
 	messageDiv.innerHTML = content;
 
 	messagesDiv.appendChild(messageDiv);
@@ -102,7 +104,6 @@ async function resetChat() {
 
 		// Clear input
 		document.getElementById("userInput").value = "";
-
 	} catch (error) {
 		console.error("Reset error:", error);
 		showError("Failed to reset chat session");
@@ -168,8 +169,10 @@ async function sendMessage() {
 		hideLoading();
 		console.error("❌ Error:", error);
 
-		if (error.message.includes('fetch')) {
-			showError("Unable to connect to server. Please check your connection.");
+		if (error.message.includes("fetch")) {
+			showError(
+				"Unable to connect to server. Please check your connection.",
+			);
 		} else {
 			showError(`Error: ${error.message}`);
 		}
@@ -206,25 +209,25 @@ function handleKeyPress(event) {
 }
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener("DOMContentLoaded", function () {
 	// Initialize theme
 	initTheme();
 
 	// Add event listener for theme toggle
-	const themeToggleBtn = document.getElementById('themeToggle');
+	const themeToggleBtn = document.getElementById("themeToggle");
 	if (themeToggleBtn) {
-		themeToggleBtn.addEventListener('click', toggleTheme);
+		themeToggleBtn.addEventListener("click", toggleTheme);
 	}
 
 	// Add subtle animations on load
-	const appLayout = document.querySelector('.app-layout');
-	appLayout.style.opacity = '0';
-	appLayout.style.transform = 'translateY(20px)';
+	const appLayout = document.querySelector(".app-layout");
+	appLayout.style.opacity = "0";
+	appLayout.style.transform = "translateY(20px)";
 
 	setTimeout(() => {
-		appLayout.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-		appLayout.style.opacity = '1';
-		appLayout.style.transform = 'translateY(0)';
+		appLayout.style.transition = "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
+		appLayout.style.opacity = "1";
+		appLayout.style.transform = "translateY(0)";
 	}, 100);
 
 	// Focus on input when page loads
