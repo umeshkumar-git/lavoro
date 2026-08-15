@@ -2,8 +2,8 @@
 
 An intelligent AI agent that automates daily tasks and improves individual workflows. This project was developed as a capstone project for the **Google AI Agents Intensive Course**.
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)  
-![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)  
+![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)  
+![Express](https://img.shields.io/badge/Express-5-black.svg)  
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Pro-orange.svg)  
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)  
 
@@ -57,11 +57,11 @@ This project came together during the **5-day AI Agents Intensive Course by Goog
 ## Tech Stack
 
 ### Backend
-- **Python 3.8+** - Main programming language
-- **Flask 3.0.0** - Web framework for REST API
+- **Node.js 18+** - Backend runtime
+- **Express 5** - Web framework for REST API and static frontend hosting
 - **Google Generative AI (Gemini Pro)** - Large language model for smart responses
-- **Flask-CORS 4.0.0** - Support for cross-origin resource sharing
-- **Python-dotenv 1.0.0** - Management of environment variables
+- **CORS** - Support for cross-origin resource sharing
+- **Dotenv** - Management of environment variables
 
 ### Frontend
 - **HTML5** - Semantic markup and structure
@@ -80,13 +80,11 @@ This project came together during the **5-day AI Agents Intensive Course by Goog
 lavoro/
 │
 ├── backend/
-│   ├── app.py                 # Main Flask application with API routes
-│   ├── requirements.txt       # Python package dependencies
-│   ├── .env                   # Environment variables (API keys)
-│   └── utils/
-│       ├── __init__.py        # Package initializer
-│       ├── gemini_agent.py    # AI agent logic with Gemini integration
-│       └── mock_data.py       # Mock data generators for demo
+│   ├── server.js              # Express API and frontend host
+│   ├── package.json           # Node scripts and dependencies
+│   ├── package-lock.json      # Locked dependency tree
+│   ├── .env.example           # Environment variable template
+│   └── utils/                 # Legacy Python utilities kept for reference
 │
 ├── frontend/
 │   ├── index.html             # Main HTML structure
@@ -100,7 +98,7 @@ lavoro/
 ## Installation
 
 ### Prerequisites
-- **Python 3.8+** installed on your system
+- **Node.js 18+** installed on your system
 - **Google Gemini API Key** (free tier is available at [Google AI Studio](https://aistudio.google.com/app/apikey))
 - A modern web browser (Chrome, Firefox, Safari, or Edge)
 
@@ -116,17 +114,20 @@ cd lavoro
 ```bash
 cd backend
 
-# Install Python dependencies
-pip install -r requirements.txt
+# Install Node dependencies
+npm install
 ```
 
 #### 3. Configure Environment Variables
-Create a `.env` file in the `backend` directory:
+Create a `.env` file in the `backend` directory. You can start by copying `.env.example`:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
-PORT=5000
+GEMINI_MODEL=gemini-3-flash-preview
+PORT=10000
 ```
+
+The app can run without `GEMINI_API_KEY`; in that case, Lavoro uses demo responses backed by mock calendar, email, task, and weather data.
 
 **To get your FREE Gemini API key:**
 1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
@@ -137,33 +138,18 @@ PORT=5000
 
 #### 4. Run the Application
 
-**Terminal 1 - Start Backend Server:**
+**Start Backend and Frontend Together:**
 ```bash
-cd backend
-python app.py
+npm start
 ```
 
 You should see:
 ```
-API Key loaded successfully!
-Server running on http://localhost:5000
-Using Google Gemini Pro (FREE!)
+Lavoro is running at http://localhost:10000
+Health check: http://localhost:10000/api/health
 ```
 
-**Terminal 2 - Open Frontend:**
-
-Option 1 (Simple):
-```bash
-cd frontend
-# Just double-click index.html in your file explorer
-```
-
-Option 2 (Local Server):
-```bash
-cd frontend
-python -m http.server 8000
-# Then open http://localhost:8000 in your browser
-```
+Open [http://localhost:10000](http://localhost:10000) in your browser. The Express backend serves the frontend and handles `/api/*` requests from the same origin.
 
 ## Usage
 
@@ -268,8 +254,10 @@ Check if the backend server is running properly.
 **Response:**
 ```json
 {
+  "success": true,
   "status": "healthy",
-  "model": "Google Gemini Pro"
+  "service": "Lavoro Backend",
+  "model": "gemini-3-flash-preview"
 }
 ```
 

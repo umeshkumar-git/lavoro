@@ -1,11 +1,12 @@
 {
-  "name": "backend",
+  "name": "lavoro-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Express backend and static frontend host for Lavoro.",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "dev": "node server.js",
+    "start": "node server.js",
+    "health": "node -e \"fetch('http://localhost:' + (process.env.PORT || 10000) + '/api/health').then(r => r.json()).then(console.log)\""
   },
   "keywords": [],
   "author": "",

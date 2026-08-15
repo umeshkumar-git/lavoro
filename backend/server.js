@@ -1,167 +1,312 @@
 require("dotenv").config();
+
+const path = require("path");
 const express = require("express");
+const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { AIOrchestrator } = require("./src/ai/orchestrator");
+const { DemoProvider, GeminiProvider } = require("./src/ai/providers");
+const { AI_MODES } = require("./src/ai/modes");
+const {
+	getConversation,
+	getProfile,
+	resetSession,
+	updateProfile,
+} = require("./src/data/store");
+const { createRateLimiter } = require("./src/middleware/rateLimit");
+const {
+	getProjectStructure,
+	readProjectFile,
+	searchProject,
+} = require("./src/utils/projectScanner");
 
 const app = express();
+const PORT = Number(process.env.PORT || 10000);
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+const GEMINI_MODEL_FALLBACKS = [
+	GEMINI_MODEL,
+	"gemini-3-flash-preview",
+	"gemini-3.1-flash-lite",
+].filter((modelName, index, models) => models.indexOf(modelName) === index);
+const frontendDir = path.resolve(__dirname, "../frontend");
+const projectRoot = path.resolve(__dirname, "..");
 
-// ✅ 1. CORS Configuration
-// Allow local development origins and the deployed app domains
-const allowedOrigins = [
+const allowedOrigins = new Set([
 	"https://lavoro.umeshshah.in",
 	"https://umeshshah.in",
 	"https://www.umeshshah.in",
-];
+	"https://api.lavoro.umeshshah.in",
+]);
 
-app.use((req, res, next) => {
-	const origin = req.headers.origin;
-	const isLocalOrigin =
-		typeof origin === "string" &&
-		(origin.includes("localhost") || origin.includes("127.0.0.1"));
-
-	if (origin && (allowedOrigins.includes(origin) || isLocalOrigin)) {
-		res.setHeader("Access-Control-Allow-Origin", origin);
-		res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-		res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-	}
-
-	if (req.method === "OPTIONS") {
-		return res.sendStatus(204);
-	}
-
-	next();
+const primaryProvider = new GeminiProvider({
+	apiKey: process.env.GEMINI_API_KEY,
+	modelNames: GEMINI_MODEL_FALLBACKS,
+	GoogleGenerativeAI,
+});
+const fallbackProvider = new DemoProvider();
+const ai = new AIOrchestrator({
+	primaryProvider,
+	fallbackProvider,
+	getProjectStructure: () => getProjectStructure(projectRoot),
 });
 
-app.use(express.json());
-
-// ✅ 2. Initialize Gemini
-let model;
-
-try {
-	const apiKey = process.env.GEMINI_API_KEY;
-	if (!apiKey) {
-		throw new Error(
-			"GEMINI_API_KEY is missing from environment variables.",
-		);
-	}
-
-	const genAI = new GoogleGenerativeAI(apiKey);
-
-	// Using a stable and available Gemini model
-	model = genAI.getGenerativeModel({
-		model: "gemini-1.0-pro",
-		systemInstruction:
-			"You are Lavoro, Umesh's professional personal assistant. Keep responses concise and helpful.",
-	});
-
-	console.log("✅ Gemini AI initialized successfully.");
-} catch (err) {
-	console.error("❌ Critical Initialization Error:", err.message);
+if (primaryProvider.isConfigured()) {
+	console.log(`Gemini configured. Primary model: ${GEMINI_MODEL}`);
+} else {
+	console.warn("GEMINI_API_KEY is not set. Developer Mentor AI will use demo responses.");
 }
 
-// ✅ 3. Health Check
-app.get("/", (req, res) => {
-	res.send("Lavoro Backend is Online 🚀");
+app.use(
+	cors({
+		origin(origin, callback) {
+			if (!origin) return callback(null, true);
+
+			let parsedOrigin;
+			try {
+				parsedOrigin = new URL(origin);
+			} catch {
+				return callback(new Error("Invalid request origin."));
+			}
+
+			const isLocal =
+				parsedOrigin.hostname === "localhost" ||
+				parsedOrigin.hostname === "127.0.0.1";
+
+			if (isLocal || allowedOrigins.has(origin)) {
+				return callback(null, true);
+			}
+
+			return callback(new Error("Origin is not allowed by CORS."));
+		},
+		methods: ["GET", "POST", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "X-Session-Id"],
+	}),
+);
+app.use(express.json({ limit: "1mb" }));
+app.use("/api", createRateLimiter({ windowMs: 60_000, max: 60 }));
+app.use(express.static(frontendDir));
+
+app.get("/api/health", (req, res) => {
+	res.json({
+		success: true,
+		status: "healthy",
+		service: "Developer Mentor AI",
+		frontend: "vanilla-html-css-js",
+		backend: "express",
+		database: "in-memory",
+		auth: "none-local-session",
+		model: primaryProvider.isConfigured() ? GEMINI_MODEL : "demo",
+		modelFallbacks: primaryProvider.isConfigured() ? GEMINI_MODEL_FALLBACKS : [],
+	});
 });
 
-// ✅ 4. Chat API
+app.get("/api/ai/modes", (req, res) => {
+	res.json({
+		success: true,
+		modes: AI_MODES,
+	});
+});
+
+app.get("/api/profile", (req, res) => {
+	res.json({
+		success: true,
+		profile: getProfile(getSessionId(req)),
+	});
+});
+
+app.post("/api/profile", (req, res) => {
+	try {
+		const profile = updateProfile(getSessionId(req), sanitizeProfile(req.body));
+		res.json({ success: true, profile });
+	} catch (error) {
+		sendError(res, error);
+	}
+});
+
+app.get("/api/conversations", (req, res) => {
+	res.json({
+		success: true,
+		messages: getConversation(getSessionId(req)),
+	});
+});
+
+app.post("/api/ai/chat", async (req, res) => {
+	const startedAt = Date.now();
+	try {
+		const result = await ai.generate({
+			...req.body,
+			sessionId: getSessionId(req),
+		});
+
+		console.log("ai.chat", {
+			mode: result.mode,
+			model: result.model,
+			latencyMs: result.latencyMs,
+			requestLatencyMs: Date.now() - startedAt,
+		});
+
+		res.json(result);
+	} catch (error) {
+		sendError(res, error);
+	}
+});
+
+app.post("/api/ai/stream", async (req, res) => {
+	const startedAt = Date.now();
+	res.writeHead(200, {
+		"Content-Type": "text/event-stream; charset=utf-8",
+		"Cache-Control": "no-cache, no-transform",
+		Connection: "keep-alive",
+	});
+
+	try {
+		for await (const event of ai.stream({
+			...req.body,
+			sessionId: getSessionId(req),
+		})) {
+			res.write(`data: ${JSON.stringify(event)}\n\n`);
+			if (event.type === "done") {
+				console.log("ai.stream", {
+					mode: event.mode,
+					model: event.model,
+					latencyMs: event.latencyMs,
+					requestLatencyMs: Date.now() - startedAt,
+				});
+			}
+		}
+	} catch (error) {
+		res.write(
+			`data: ${JSON.stringify({
+				type: "error",
+				message: publicErrorMessage(error),
+			})}\n\n`,
+		);
+	} finally {
+		res.end();
+	}
+});
+
 app.post("/api/chat", async (req, res) => {
 	try {
-		const { message } = req.body;
-
-		if (!message) {
-			return res
-				.status(400)
-				.json({ success: false, message: "No message provided." });
-		}
-
-		if (!model) {
-			return res
-				.status(503)
-				.json({ success: false, message: "AI model not initialized." });
-		}
-
-		// Generate response
-		let responseText;
-		try {
-			const result = await model.generateContent(message);
-			const response = await result.response;
-			responseText = response.text();
-		} catch (apiError) {
-			console.log("API failed, using mock response:", apiError.message);
-			// Mock responses for demo purposes
-			const mockResponses = [
-				"I understand you're asking about: " + message + ". As your AI assistant, I'm here to help streamline your workflow.",
-				"That's an interesting point about " + message.substring(0, 20) + "... Let me help you organize this.",
-				"Great question! Based on what you've shared, I recommend focusing on task prioritization and time management.",
-				"I see you're working on " + message.substring(0, 15) + ". Here's how I can assist you today.",
-				"Perfect! As Lavoro, I'm designed to help with daily tasks like this. Let me provide some actionable insights."
-			];
-			responseText = mockResponses[Math.floor(Math.random() * mockResponses.length)];
-		}
-
-		res.json({
-			success: true,
-			message: responseText,
+		const result = await ai.generate({
+			...req.body,
+			sessionId: getSessionId(req),
 		});
+		res.json(result);
 	} catch (error) {
-		console.error("❌ Chat API Error:", error);
-		console.error("Error message:", error.message);
-		console.error("Error details:", error);
-
-		// Check for common errors
-		let errorMessage = "Lavoro is temporarily unavailable.";
-		let statusCode = 500;
-
-		if (error.message.includes("404")) {
-			errorMessage =
-				"Model version not available. Please contact support.";
-		} else if (
-			error.message.includes("401") ||
-			error.message.includes("authentication")
-		) {
-			errorMessage =
-				"API authentication failed. Please check server configuration.";
-			statusCode = 401;
-		} else if (error.message.includes("429")) {
-			errorMessage = "Too many requests. Please try again later.";
-			statusCode = 429;
-		} else if (error.message.includes("PERMISSION_DENIED")) {
-			errorMessage = "API permission denied. Please check your API key.";
-			statusCode = 403;
-		}
-
-		res.status(statusCode).json({
-			success: false,
-			message: errorMessage,
-			details: error.message,
-		});
+		sendError(res, error);
 	}
 });
 
-// ✅ 5. Reset Chat
 app.post("/api/reset", (req, res) => {
+	resetSession(getSessionId(req));
+	res.json({
+		success: true,
+		message: "Conversation reset.",
+	});
+});
+
+app.get("/api/project/structure", async (req, res) => {
 	try {
-		// Reset chat session (clear any conversation context if needed)
 		res.json({
 			success: true,
-			message: "Chat reset successfully.",
+			project: await getProjectStructure(projectRoot),
 		});
 	} catch (error) {
-		console.error("❌ Reset API Error:", error.message);
-		res.status(500).json({
-			success: false,
-			message: "Failed to reset chat.",
-		});
+		sendError(res, error);
 	}
 });
 
-// ✅ 6. Start Server
+app.get("/api/project/file", async (req, res) => {
+	try {
+		res.json({
+			success: true,
+			file: await readProjectFile(projectRoot, req.query.path),
+		});
+	} catch (error) {
+		sendError(res, error);
+	}
+});
 
-// Port 10000 is the standard for Render
-const PORT = process.env.PORT || 10000;
+app.get("/api/project/search", async (req, res) => {
+	try {
+		res.json({
+			success: true,
+			results: await searchProject(projectRoot, req.query.q),
+		});
+	} catch (error) {
+		sendError(res, error);
+	}
+});
+
+app.get(/.*/, (req, res) => {
+	res.sendFile(path.join(frontendDir, "index.html"));
+});
+
+app.use((error, req, res, next) => {
+	if (res.headersSent) return next(error);
+	return sendError(res, error);
+});
+
+function getSessionId(req) {
+	return (
+		req.headers["x-session-id"] ||
+		req.body?.sessionId ||
+		req.ip ||
+		"default-session"
+	);
+}
+
+function sanitizeProfile(input = {}) {
+	const safe = {};
+	const stringFields = [
+		"experienceLevel",
+		"goal",
+		"currentProject",
+		"studyTime",
+		"targetRole",
+		"preferredStyle",
+	];
+	const listFields = ["languages", "technologies", "strongTopics", "weakTopics"];
+
+	for (const field of stringFields) {
+		if (typeof input[field] === "string") {
+			safe[field] = input[field].trim().slice(0, 200);
+		}
+	}
+
+	for (const field of listFields) {
+		if (Array.isArray(input[field])) {
+			safe[field] = input[field]
+				.map((item) => String(item).trim().slice(0, 80))
+				.filter(Boolean)
+				.slice(0, 20);
+		}
+	}
+
+	return safe;
+}
+
+function sendError(res, error) {
+	const statusCode = error.statusCode || 500;
+	if (statusCode >= 500) {
+		console.error("API error:", error);
+	}
+
+	res.status(statusCode).json({
+		success: false,
+		message: publicErrorMessage(error),
+	});
+}
+
+function publicErrorMessage(error) {
+	if (error.statusCode && error.statusCode < 500) return error.message;
+	return "Developer Mentor AI is temporarily unavailable. Please try again.";
+}
+
 app.listen(PORT, "0.0.0.0", () => {
-	console.log(`-----------------------------------------`);
-	console.log(`Lavoro Server running on Port: ${PORT}`);
-	console.log(`Domain: https://api.lavoro.umeshshah.in`);
-	console.log(`-----------------------------------------`);
+	console.log("-----------------------------------------");
+	console.log(`Developer Mentor AI is running at http://localhost:${PORT}`);
+	console.log(`Health check: http://localhost:${PORT}/api/health`);
+	console.log("-----------------------------------------");
 });

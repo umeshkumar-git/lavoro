@@ -1,265 +1,492 @@
-const API_URL = "http://localhost:10000";
+const API_URL = getApiUrl();
+const SESSION_ID = getSessionId();
 
-// Theme management
-function initTheme() {
-	const savedTheme = localStorage.getItem("theme") || "light";
+const state = {
+	mode: "learn",
+	level: "intermediate",
+	teachingStyle: "direct",
+	attachments: [],
+	lastPrompt: "",
+	abortController: null,
+};
 
-	// Remove existing theme classes
-	document.body.classList.remove("light-theme", "dark-theme");
-	// Add the current theme class
-	document.body.classList.add(savedTheme + "-theme");
+const modeFallback = {
+	learn: { label: "Learn", description: "Concepts, examples, exercises" },
+	debug: { label: "Debug", description: "Errors, logs, hypotheses" },
+	review: { label: "Code Review", description: "Severity-based feedback" },
+	pair: { label: "Pair", description: "Build step by step" },
+	project: { label: "Project", description: "Specs and milestones" },
+	interview: { label: "Interview", description: "Practice with scoring" },
+	systemDesign: { label: "System Design", description: "Architecture reasoning" },
+	planner: { label: "Learning Path", description: "Personal roadmap" },
+};
 
-	updateThemeIcon(savedTheme);
+document.addEventListener("DOMContentLoaded", init);
+
+async function init() {
+	initTheme();
+	bindEvents();
+	renderModes(modeFallback);
+	addWelcomeMessage();
+
+	await Promise.all([loadHealth(), loadModes(), loadProfile(), loadProjectSummary()]);
+	document.getElementById("userInput").focus();
 }
 
-function toggleTheme() {
-	const isDark = document.body.classList.contains("dark-theme");
-	const newTheme = isDark ? "light" : "dark";
-
-	// Remove existing theme classes
-	document.body.classList.remove("light-theme", "dark-theme");
-	// Add the new theme class
-	document.body.classList.add(newTheme + "-theme");
-
-	localStorage.setItem("theme", newTheme);
-	updateThemeIcon(newTheme);
+function bindEvents() {
+	document.getElementById("chatForm").addEventListener("submit", (event) => {
+		event.preventDefault();
+		sendMessage();
+	});
+	document.getElementById("stopBtn").addEventListener("click", stopGeneration);
+	document.getElementById("newChatBtn").addEventListener("click", resetChat);
+	document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+	document.getElementById("levelSelect").addEventListener("change", (event) => {
+		state.level = event.target.value;
+	});
+	document.getElementById("teachingSelect").addEventListener("change", (event) => {
+		state.teachingStyle = event.target.value;
+	});
+	document.getElementById("fileInput").addEventListener("change", handleFiles);
+	document.getElementById("profileForm").addEventListener("submit", saveProfile);
+	document.querySelectorAll("[data-prompt]").forEach((button) => {
+		button.addEventListener("click", () => {
+			document.getElementById("userInput").value = button.dataset.prompt;
+			sendMessage();
+		});
+	});
 }
 
-function updateThemeIcon(theme) {
-	const themeToggle = document.getElementById("themeToggle");
-	if (themeToggle) {
-		const sunIcon = themeToggle.querySelector(".fa-sun");
-		const moonIcon = themeToggle.querySelector(".fa-moon");
+function getApiUrl() {
+	const hostname = window.location.hostname;
+	const protocol = window.location.protocol;
 
-		if (theme === "dark") {
-			if (sunIcon) sunIcon.style.opacity = "0";
-			if (moonIcon) moonIcon.style.opacity = "1";
-		} else {
-			if (sunIcon) sunIcon.style.opacity = "1";
-			if (moonIcon) moonIcon.style.opacity = "0";
-		}
+	if (hostname === "localhost" || hostname === "127.0.0.1") {
+		return window.location.port === "10000"
+			? window.location.origin
+			: "http://localhost:10000";
 	}
-}
 
-// Add message to UI
-function addMessage(content, isUser = false) {
-	const messagesDiv = document.getElementById("chatMessages");
-
-	// Remove welcome message if it exists
-	const welcomeMessage = messagesDiv.querySelector(".welcome-message");
-	if (welcomeMessage) {
-		welcomeMessage.remove();
+	if (protocol === "file:") return "http://localhost:10000";
+	if (hostname === "lavoro.umeshshah.in" || hostname === "www.umeshshah.in") {
+		return "https://api.lavoro.umeshshah.in";
 	}
 
-	const messageDiv = document.createElement("div");
-	messageDiv.className = isUser
-		? "message user-message"
-		: "message assistant-message";
-	messageDiv.innerHTML = content;
-
-	messagesDiv.appendChild(messageDiv);
-	messagesDiv.scrollTop = messagesDiv.scrollHeight;
+	return `${protocol}//${hostname}${window.location.port ? `:${window.location.port}` : ""}`;
 }
 
-// Show loading
-function showLoading() {
-	const messagesDiv = document.getElementById("chatMessages");
-	const loadingDiv = document.createElement("div");
+function getSessionId() {
+	const existing = localStorage.getItem("developerMentorSessionId");
+	if (existing) return existing;
 
-	loadingDiv.className = "loading";
-	loadingDiv.id = "loadingIndicator";
-
-	messagesDiv.appendChild(loadingDiv);
-	messagesDiv.scrollTop = messagesDiv.scrollHeight;
+	const sessionId =
+		crypto.randomUUID?.() ||
+		`mentor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+	localStorage.setItem("developerMentorSessionId", sessionId);
+	return sessionId;
 }
 
-// Hide loading
-function hideLoading() {
-	const loading = document.getElementById("loadingIndicator");
-	if (loading) loading.remove();
-}
-
-// Reset chat
-async function resetChat() {
+async function loadHealth() {
 	try {
-		await fetch(`${API_URL}/api/reset`, { method: "POST" });
+		const data = await apiGet("/api/health");
+		const badge = document.getElementById("healthBadge");
+		badge.textContent = `${data.status} · ${data.model}`;
+		badge.classList.add("online");
+	} catch {
+		const badge = document.getElementById("healthBadge");
+		badge.textContent = "Backend offline";
+		badge.classList.add("offline");
+	}
+}
 
-		// Clear all messages
-		document.getElementById("chatMessages").innerHTML = "";
+async function loadModes() {
+	try {
+		const data = await apiGet("/api/ai/modes");
+		renderModes(data.modes);
+	} catch {
+		renderModes(modeFallback);
+	}
+}
 
-		// Add back the welcome message
-		const messagesDiv = document.getElementById("chatMessages");
-		const welcomeDiv = document.createElement("div");
-		welcomeDiv.className = "welcome-message";
-		welcomeDiv.innerHTML = `
-			<div class="welcome-icon">
-				<i class="fas fa-wave"></i>
-			</div>
-			<div class="welcome-text">
-				<h3>Hello! I'm Lavoro</h3>
-				<p>How can I streamline your workflow today?</p>
-			</div>
+async function loadProfile() {
+	try {
+		const data = await apiGet("/api/profile");
+		const profile = data.profile;
+		document.getElementById("profileExperience").value =
+			profile.experienceLevel || "";
+		document.getElementById("profileLanguages").value = (
+			profile.languages || []
+		).join(", ");
+		document.getElementById("profileGoal").value = profile.goal || "";
+		document.getElementById("profileProject").value =
+			profile.currentProject || "";
+		document.getElementById("levelSelect").value =
+			profile.experienceLevel || "intermediate";
+		document.getElementById("teachingSelect").value =
+			profile.preferredStyle || "direct";
+		state.level = document.getElementById("levelSelect").value;
+		state.teachingStyle = document.getElementById("teachingSelect").value;
+	} catch {
+		showToast("Profile will use local defaults until the backend is reachable.");
+	}
+}
+
+async function loadProjectSummary() {
+	try {
+		const data = await apiGet("/api/project/structure");
+		const summary = data.project.summary;
+		document.getElementById("projectSummary").innerHTML = `
+			<strong>${summary.totalFiles}</strong> indexed files<br>
+			${summary.frontendFiles} frontend · ${summary.backendFiles} backend · ${summary.testFiles} tests
 		`;
-		messagesDiv.appendChild(welcomeDiv);
-
-		// Clear input
-		document.getElementById("userInput").value = "";
-	} catch (error) {
-		console.error("Reset error:", error);
-		showError("Failed to reset chat session");
+	} catch {
+		document.getElementById("projectSummary").textContent =
+			"Project context unavailable.";
 	}
 }
 
-// Show error message
-function showError(message) {
-	const messagesDiv = document.getElementById("chatMessages");
-	const errorDiv = document.createElement("div");
-	errorDiv.className = "message assistant-message error-message";
-	errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+function renderModes(modes) {
+	const modeList = document.getElementById("modeList");
+	modeList.innerHTML = "";
 
-	messagesDiv.appendChild(errorDiv);
-	messagesDiv.scrollTop = messagesDiv.scrollHeight;
+	Object.entries(modes).forEach(([key, mode]) => {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = key === state.mode ? "mode-btn active" : "mode-btn";
+		button.innerHTML = `
+			<span>${escapeHtml(mode.label)}</span>
+			<small>${escapeHtml(mode.description || "")}</small>
+		`;
+		button.addEventListener("click", () => {
+			state.mode = key;
+			renderModes(modes);
+		});
+		modeList.appendChild(button);
+	});
 }
 
-// Enhanced send message with better error handling
-async function sendMessage() {
-	console.log("🚀 sendMessage triggered");
-
+async function sendMessage(promptOverride) {
 	const input = document.getElementById("userInput");
-	const sendBtn = document.getElementById("sendBtn");
-	const message = input.value.trim();
+	const prompt = String(promptOverride || input.value).trim();
+	if (!prompt) return;
 
-	if (!message) return;
-
-	// Disable input and button during sending
-	input.disabled = true;
-	sendBtn.disabled = true;
-	sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-	addMessage(message, true);
+	state.lastPrompt = prompt;
 	input.value = "";
-	showLoading();
+	addMessage(prompt, "user");
+
+	const assistantMessage = addMessage("", "assistant", {
+		streaming: true,
+		model: "thinking",
+	});
+
+	setSending(true);
+	state.abortController = new AbortController();
 
 	try {
-		const response = await fetch(`${API_URL}/api/chat`, {
+		const response = await fetch(`${API_URL}/api/ai/stream`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				"X-Session-Id": SESSION_ID,
 			},
-			body: JSON.stringify({ message }),
+			body: JSON.stringify({
+				message: prompt,
+				mode: state.mode,
+				level: state.level,
+				teachingStyle: state.teachingStyle,
+				attachments: state.attachments,
+				includeProject: document.getElementById("includeProject").checked,
+			}),
+			signal: state.abortController.signal,
 		});
 
-		console.log("📡 Status:", response.status);
-
-		const data = await response.json();
-		console.log("📦 Data:", data);
-
-		hideLoading();
-
-		if (!response.ok) {
-			// Handle HTTP errors
-			if (response.status === 401 || response.status === 403) {
-				showError(
-					"⚠️ API Authentication Error: Please check your API key configuration.",
-				);
-			} else if (response.status === 429) {
-				showError(
-					"⏳ Too many requests. Please wait a moment and try again.",
-				);
-			} else if (response.status === 500) {
-				showError(
-					`Server Error: ${data.message || "Please try again later."}`,
-				);
-			} else {
-				showError(
-					`Error (${response.status}): ${data.message || response.statusText}`,
-				);
-			}
-			return;
+		if (!response.ok || !response.body) {
+			throw new Error("The mentor could not start a response.");
 		}
 
-		if (data.success) {
-			addMessage(data.message, false);
-		} else {
-			showError(data.message || "AI failed to respond");
-		}
+		await readStream(response.body, assistantMessage);
+		state.attachments = [];
+		renderAttachments();
 	} catch (error) {
-		hideLoading();
-		console.error("❌ Error:", error);
-
-		if (
-			error.message.includes("Failed to fetch") ||
-			error.message.includes("fetch")
-		) {
-			showError(
-				"❌ Connection Error: Unable to reach the server. Please check your connection.",
-			);
-		} else {
-			showError(`Error: ${error.message}`);
+		if (error.name !== "AbortError") {
+			updateMessage(assistantMessage, `Error: ${error.message}`);
 		}
 	} finally {
-		// Re-enable input and button
-		input.disabled = false;
-		sendBtn.disabled = false;
-		sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+		setSending(false);
+		state.abortController = null;
 	}
 }
 
-// Quick buttons with enhanced UX
-function quickAction(action) {
-	document.getElementById("userInput").value = action;
+async function readStream(body, messageElement) {
+	const reader = body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let fullText = "";
 
-	// Add a subtle animation to the input
-	const input = document.getElementById("userInput");
-	input.style.transform = "scale(1.02)";
-	input.style.boxShadow = "0 0 20px rgba(99, 102, 241, 0.3)";
+	while (true) {
+		const { value, done } = await reader.read();
+		if (done) break;
 
-	setTimeout(() => {
-		input.style.transform = "scale(1)";
-		input.style.boxShadow = "none";
-		sendMessage();
-	}, 300);
-}
+		buffer += decoder.decode(value, { stream: true });
+		const events = buffer.split("\n\n");
+		buffer = events.pop() || "";
 
-// Enter key with better UX
-function handleKeyPress(event) {
-	if (event.key === "Enter" && !event.shiftKey) {
-		event.preventDefault();
-		sendMessage();
+		for (const event of events) {
+			const line = event
+				.split("\n")
+				.find((entry) => entry.startsWith("data: "));
+			if (!line) continue;
+
+			const payload = JSON.parse(line.slice(6));
+			if (payload.type === "chunk") {
+				fullText += payload.text;
+				updateMessage(messageElement, fullText, payload.model);
+			}
+			if (payload.type === "error") {
+				updateMessage(messageElement, `Error: ${payload.message}`);
+			}
+			if (payload.type === "done") {
+				messageElement.classList.remove("streaming");
+				messageElement.dataset.model = payload.model;
+				addMessageActions(messageElement, fullText);
+			}
+		}
 	}
 }
 
-// Initialize app
-document.addEventListener("DOMContentLoaded", function () {
-	// Initialize theme
-	initTheme();
-
-	// Add event listener for theme toggle
-	const themeToggleBtn = document.getElementById("themeToggle");
-	if (themeToggleBtn) {
-		themeToggleBtn.addEventListener("click", toggleTheme);
-	}
-
-	// Add subtle animations on load
-	const appLayout = document.querySelector(".app-layout");
-	appLayout.style.opacity = "0";
-	appLayout.style.transform = "translateY(20px)";
-
-	setTimeout(() => {
-		appLayout.style.transition = "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
-		appLayout.style.opacity = "1";
-		appLayout.style.transform = "translateY(0)";
-	}, 100);
-
-	// Focus on input when page loads
-	document.getElementById("userInput").focus();
-});
-
-// Welcome message
-window.onload = () => {
+function addWelcomeMessage() {
 	addMessage(
-		"<b>👋 Welcome to Your Personal Assistant!</b><br><br>" +
-			"I'm here to help you manage your daily tasks, schedule, emails, and more.",
-		false,
+		"Welcome. Choose a mode, paste code or a question, and I’ll help you reason through it like a senior engineer: concepts, tradeoffs, fixes, tests, and next practice steps.",
+		"assistant",
+		{ model: "system" },
 	);
-};
+}
+
+function addMessage(content, role, options = {}) {
+	const messages = document.getElementById("chatMessages");
+	const message = document.createElement("article");
+	message.className = `message ${role}-message${options.streaming ? " streaming" : ""}`;
+	message.dataset.raw = content;
+	message.dataset.model = options.model || "";
+	message.innerHTML = `
+		<div class="message-meta">
+			<strong>${role === "user" ? "You" : "Developer Mentor AI"}</strong>
+			<span>${escapeHtml(options.model || state.mode)}</span>
+		</div>
+		<div class="message-content">${renderMarkdown(content)}</div>
+	`;
+	messages.appendChild(message);
+	messages.scrollTop = messages.scrollHeight;
+
+	if (role === "assistant" && content) addMessageActions(message, content);
+	return message;
+}
+
+function updateMessage(message, content, model) {
+	message.dataset.raw = content;
+	if (model) message.dataset.model = model;
+	message.querySelector(".message-meta span").textContent =
+		model || message.dataset.model || state.mode;
+	message.querySelector(".message-content").innerHTML = renderMarkdown(content);
+	document.getElementById("chatMessages").scrollTop =
+		document.getElementById("chatMessages").scrollHeight;
+}
+
+function addMessageActions(message, content) {
+	if (message.querySelector(".message-actions")) return;
+
+	const actions = document.createElement("div");
+	actions.className = "message-actions";
+	actions.innerHTML = `
+		<button type="button" data-action="copy"><i class="fas fa-copy"></i> Copy</button>
+		<button type="button" data-action="regenerate"><i class="fas fa-rotate"></i> Regenerate</button>
+	`;
+	actions.querySelector('[data-action="copy"]').addEventListener("click", () => {
+		navigator.clipboard.writeText(content || message.dataset.raw || "");
+	});
+	actions
+		.querySelector('[data-action="regenerate"]')
+		.addEventListener("click", () => sendMessage(state.lastPrompt));
+	message.appendChild(actions);
+	bindCodeCopyButtons(message);
+}
+
+function bindCodeCopyButtons(scope = document) {
+	scope.querySelectorAll(".copy-code").forEach((button) => {
+		if (button.dataset.bound) return;
+		button.dataset.bound = "true";
+		button.addEventListener("click", () => {
+			const code = button.closest(".code-block").querySelector("code").textContent;
+			navigator.clipboard.writeText(code);
+			button.textContent = "Copied";
+			setTimeout(() => {
+				button.textContent = "Copy";
+			}, 1200);
+		});
+	});
+}
+
+function renderMarkdown(markdown) {
+	const escaped = escapeHtml(markdown || "");
+	const withCode = escaped.replace(
+		/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g,
+		(_, language, code) => `<div class="code-block"><div><span>${language || "code"}</span><button class="copy-code" type="button">Copy</button></div><pre><code>${code.trim()}</code></pre></div>`,
+	);
+
+	return withCode
+		.replace(/^###\s(.+)$/gm, "<h3>$1</h3>")
+		.replace(/^##\s(.+)$/gm, "<h2>$1</h2>")
+		.replace(/^#\s(.+)$/gm, "<h2>$1</h2>")
+		.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+		.replace(/`([^`]+)`/g, "<code>$1</code>")
+		.replace(/\n/g, "<br>");
+}
+
+async function handleFiles(event) {
+	const files = Array.from(event.target.files || []).slice(0, 4);
+	const attachments = await Promise.all(
+		files.map(async (file) => ({
+			name: file.name,
+			language: inferLanguage(file.name),
+			content: (await file.text()).slice(0, 12_000),
+		})),
+	);
+
+	state.attachments.push(...attachments);
+	state.attachments = state.attachments.slice(0, 4);
+	renderAttachments();
+	event.target.value = "";
+}
+
+function renderAttachments() {
+	const tray = document.getElementById("attachmentTray");
+	tray.innerHTML = "";
+	tray.hidden = state.attachments.length === 0;
+
+	state.attachments.forEach((attachment, index) => {
+		const chip = document.createElement("button");
+		chip.type = "button";
+		chip.className = "attachment-chip";
+		chip.innerHTML = `<i class="fas fa-file-code"></i> ${escapeHtml(attachment.name)} <span>remove</span>`;
+		chip.addEventListener("click", () => {
+			state.attachments.splice(index, 1);
+			renderAttachments();
+		});
+		tray.appendChild(chip);
+	});
+}
+
+async function saveProfile(event) {
+	event.preventDefault();
+	const profile = {
+		experienceLevel: document.getElementById("profileExperience").value,
+		languages: csv(document.getElementById("profileLanguages").value),
+		goal: document.getElementById("profileGoal").value,
+		currentProject: document.getElementById("profileProject").value,
+		preferredStyle: state.teachingStyle,
+	};
+
+	try {
+		await apiPost("/api/profile", profile);
+		showToast("Profile saved.");
+	} catch {
+		showToast("Could not save profile.");
+	}
+}
+
+async function resetChat() {
+	await apiPost("/api/reset", { sessionId: SESSION_ID });
+	document.getElementById("chatMessages").innerHTML = "";
+	addWelcomeMessage();
+}
+
+function stopGeneration() {
+	state.abortController?.abort();
+}
+
+function setSending(isSending) {
+	document.getElementById("sendBtn").disabled = isSending;
+	document.getElementById("stopBtn").disabled = !isSending;
+	document.getElementById("userInput").disabled = isSending;
+}
+
+function initTheme() {
+	document.body.classList.toggle(
+		"dark-theme",
+		localStorage.getItem("theme") === "dark",
+	);
+}
+
+function toggleTheme() {
+	const isDark = document.body.classList.toggle("dark-theme");
+	localStorage.setItem("theme", isDark ? "dark" : "light");
+}
+
+async function apiGet(path) {
+	const response = await fetch(`${API_URL}${path}`, {
+		headers: { "X-Session-Id": SESSION_ID },
+	});
+	if (!response.ok) throw new Error("Request failed");
+	return response.json();
+}
+
+async function apiPost(path, body) {
+	const response = await fetch(`${API_URL}${path}`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Session-Id": SESSION_ID,
+		},
+		body: JSON.stringify(body),
+	});
+	if (!response.ok) throw new Error("Request failed");
+	return response.json();
+}
+
+function showToast(message) {
+	const toast = document.createElement("div");
+	toast.className = "toast";
+	toast.textContent = message;
+	document.body.appendChild(toast);
+	setTimeout(() => toast.remove(), 2400);
+}
+
+function inferLanguage(fileName) {
+	const extension = fileName.split(".").pop().toLowerCase();
+	const map = {
+		js: "javascript",
+		jsx: "javascript",
+		ts: "typescript",
+		tsx: "typescript",
+		py: "python",
+		java: "java",
+		c: "c",
+		cpp: "cpp",
+		go: "go",
+		rs: "rust",
+		sql: "sql",
+		html: "html",
+		css: "css",
+		json: "json",
+		yml: "yaml",
+		yaml: "yaml",
+		sh: "bash",
+	};
+	return map[extension] || "text";
+}
+
+function csv(value) {
+	return String(value || "")
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
+function escapeHtml(value) {
+	return String(value)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
