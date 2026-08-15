@@ -46,6 +46,15 @@ function buildTrustedContext(context) {
 	return `Trusted student profile:
 ${JSON.stringify(context.profile, null, 2)}
 
+Current tasks and commitments:
+${JSON.stringify(context.tasks || [], null, 2)}
+
+Upcoming reminders:
+${JSON.stringify(context.reminders || [], null, 2)}
+
+Recent plans:
+${JSON.stringify(context.plans || [], null, 2)}
+
 Recent mentor memories:
 ${JSON.stringify(context.memories, null, 2)}
 

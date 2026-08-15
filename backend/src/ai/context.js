@@ -1,4 +1,11 @@
-const { getConversation, getMemories, getProfile } = require("../data/store");
+const {
+	getConversation,
+	getMemories,
+	getPlans,
+	getProfile,
+	getReminders,
+	getTasks,
+} = require("../data/store");
 
 function buildAssistantContext({
 	sessionId,
@@ -11,6 +18,9 @@ function buildAssistantContext({
 	const profile = getProfile(sessionId);
 	const history = getConversation(sessionId).slice(-12);
 	const memories = getMemories(sessionId).slice(0, 8);
+	const tasks = getTasks(sessionId).slice(0, 6);
+	const reminders = getReminders(sessionId).slice(0, 6);
+	const plans = getPlans(sessionId).slice(0, 3);
 
 	return {
 		mode,
@@ -19,6 +29,9 @@ function buildAssistantContext({
 		profile,
 		history,
 		memories,
+		tasks,
+		reminders,
+		plans,
 		project: projectStructure
 			? {
 					summary: projectStructure.summary,

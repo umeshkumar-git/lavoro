@@ -1,3 +1,36 @@
+// Suppress noisy errors caused by browser extensions (chrome-extension://)
+// and avoid uncaught promise messages coming from extensions.
+window.addEventListener("error", (e) => {
+	try {
+		const fname = e?.filename || "";
+		if (typeof fname === "string" && fname.startsWith("chrome-extension://")) {
+			e.preventDefault();
+			return true;
+		}
+	} catch (err) {
+		// noop
+	}
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+	try {
+		const reason = e?.reason;
+		const msg = (reason && reason.message) || String(reason || "");
+		if (msg.includes("A listener indicated an asynchronous response by returning true")) {
+			// Prevent the browser from logging this as an uncaught promise error
+			e.preventDefault();
+			return true;
+		}
+		// Also ignore extension-origin rejections
+		if (String(msg).includes("chrome-extension://")) {
+			e.preventDefault();
+			return true;
+		}
+	} catch (err) {
+		// noop
+	}
+});
+
 const API_URL = getApiUrl();
 const SESSION_ID = getSessionId();
 
@@ -29,7 +62,13 @@ async function init() {
 	renderModes(modeFallback);
 	addWelcomeMessage();
 
-	await Promise.all([loadHealth(), loadModes(), loadProfile(), loadProjectSummary()]);
+	await Promise.all([
+		loadHealth(),
+		loadModes(),
+		loadProfile(),
+		loadProjectSummary(),
+		loadPlannerData(),
+	]);
 	document.getElementById("userInput").focus();
 }
 
@@ -52,9 +91,28 @@ function bindEvents() {
 	document.querySelectorAll("[data-prompt]").forEach((button) => {
 		button.addEventListener("click", () => {
 			document.getElementById("userInput").value = button.dataset.prompt;
+			autoGrowInput();
 			sendMessage();
 		});
 	});
+
+	const userInputEl = document.getElementById("userInput");
+	if (userInputEl) {
+		userInputEl.addEventListener("input", autoGrowInput);
+		userInputEl.addEventListener("keydown", (e) => {
+			if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+				e.preventDefault();
+				sendMessage();
+			}
+		});
+	}
+}
+
+function autoGrowInput() {
+	const input = document.getElementById("userInput");
+	if (!input) return;
+	input.style.height = "auto";
+	input.style.height = `${Math.min(input.scrollHeight, 220)}px`;
 }
 
 function getApiUrl() {
@@ -143,6 +201,85 @@ async function loadProjectSummary() {
 		document.getElementById("projectSummary").textContent =
 			"Project context unavailable.";
 	}
+}
+
+async function loadPlannerData() {
+	try {
+		const [taskData, reminderData, planData] = await Promise.all([
+			apiGet("/api/tasks"),
+			apiGet("/api/reminders"),
+			apiGet("/api/plans"),
+		]);
+		renderTasks(taskData.tasks || []);
+		renderReminders(reminderData.reminders || []);
+		renderPlans(planData.plans || []);
+	} catch {
+		renderTasks([]);
+		renderReminders([]);
+		document.getElementById("dailyPlan").textContent =
+			"Planner data is unavailable right now.";
+	}
+}
+
+function renderTasks(tasks) {
+	const list = document.getElementById("taskList");
+	if (!list) return;
+	list.innerHTML = "";
+
+	if (!tasks.length) {
+		list.innerHTML = '<li class="stack-item"><div><strong>No active tasks</strong><small>Add one from the chat or your plan.</small></div></li>';
+		return;
+	}
+
+	tasks.slice(0, 5).forEach((task) => {
+		const item = document.createElement("li");
+		item.className = "stack-item";
+		item.innerHTML = `
+			<div>
+				<strong>${escapeHtml(task.title)}</strong>
+				<small>${escapeHtml(task.due || "later")} · ${escapeHtml(task.category || "general")}</small>
+			</div>
+			<span class="stack-badge">${escapeHtml(task.priority || "medium")}</span>
+		`;
+		list.appendChild(item);
+	});
+}
+
+function renderReminders(reminders) {
+	const list = document.getElementById("reminderList");
+	if (!list) return;
+	list.innerHTML = "";
+
+	if (!reminders.length) {
+		list.innerHTML = '<li class="stack-item"><div><strong>No reminders</strong><small>Ask the assistant to set one.</small></div></li>';
+		return;
+	}
+
+	reminders.slice(0, 5).forEach((reminder) => {
+		const item = document.createElement("li");
+		item.className = "stack-item";
+		item.innerHTML = `
+			<div>
+				<strong>${escapeHtml(reminder.title)}</strong>
+				<small>${escapeHtml(reminder.when || "later")}</small>
+			</div>
+			<span class="stack-badge">${reminder.done ? "Done" : "Soon"}</span>
+		`;
+		list.appendChild(item);
+	});
+}
+
+function renderPlans(plans) {
+	const target = document.getElementById("dailyPlan");
+	if (!target) return;
+
+	if (!plans.length) {
+		target.textContent = "No plan generated yet.";
+		return;
+	}
+
+	const latest = plans[0];
+	target.innerHTML = `${escapeHtml(latest.summary || "Plan ready.")}<br><small>${escapeHtml(latest.tasks?.map((task) => task.title).join(" • ") || "Focus on your top priorities.")}</small>`;
 }
 
 function renderModes(modes) {
@@ -405,9 +542,19 @@ function stopGeneration() {
 }
 
 function setSending(isSending) {
-	document.getElementById("sendBtn").disabled = isSending;
-	document.getElementById("stopBtn").disabled = !isSending;
-	document.getElementById("userInput").disabled = isSending;
+	const sendBtn = document.getElementById("sendBtn");
+	const stopBtn = document.getElementById("stopBtn");
+	const input = document.getElementById("userInput");
+
+	if (sendBtn) {
+		sendBtn.disabled = isSending;
+		sendBtn.classList.toggle("loading", isSending);
+		sendBtn.innerHTML = isSending
+			? '<span class="spinner"></span> Sending'
+			: '<i class="fas fa-paper-plane"></i> Send';
+	}
+	if (stopBtn) stopBtn.disabled = !isSending;
+	if (input) input.disabled = isSending;
 }
 
 function initTheme() {
@@ -415,11 +562,27 @@ function initTheme() {
 		"dark-theme",
 		localStorage.getItem("theme") === "dark",
 	);
+	const themeToggle = document.getElementById("themeToggle");
+	if (themeToggle) {
+		const icon = themeToggle.querySelector("i");
+		if (icon) {
+			icon.className = document.body.classList.contains("dark-theme")
+				? "fas fa-sun"
+				: "fas fa-moon";
+		}
+	}
 }
 
 function toggleTheme() {
 	const isDark = document.body.classList.toggle("dark-theme");
 	localStorage.setItem("theme", isDark ? "dark" : "light");
+	const themeToggle = document.getElementById("themeToggle");
+	if (themeToggle) {
+		const icon = themeToggle.querySelector("i");
+		if (icon) {
+			icon.className = isDark ? "fas fa-sun" : "fas fa-moon";
+		}
+	}
 }
 
 async function apiGet(path) {

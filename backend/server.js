@@ -8,8 +8,14 @@ const { AIOrchestrator } = require("./src/ai/orchestrator");
 const { DemoProvider, GeminiProvider } = require("./src/ai/providers");
 const { AI_MODES } = require("./src/ai/modes");
 const {
+	addReminder,
+	addTask,
+	createDailyPlan,
 	getConversation,
+	getPlans,
 	getProfile,
+	getReminders,
+	getTasks,
 	resetSession,
 	updateProfile,
 } = require("./src/data/store");
@@ -130,6 +136,54 @@ app.get("/api/conversations", (req, res) => {
 	});
 });
 
+app.get("/api/tasks", (req, res) => {
+	res.json({
+		success: true,
+		tasks: getTasks(getSessionId(req)),
+	});
+});
+
+app.post("/api/tasks", (req, res) => {
+	try {
+		const tasks = addTask(getSessionId(req), req.body);
+		res.json({ success: true, tasks });
+	} catch (error) {
+		sendError(res, error);
+	}
+});
+
+app.get("/api/reminders", (req, res) => {
+	res.json({
+		success: true,
+		reminders: getReminders(getSessionId(req)),
+	});
+});
+
+app.post("/api/reminders", (req, res) => {
+	try {
+		const reminders = addReminder(getSessionId(req), req.body);
+		res.json({ success: true, reminders });
+	} catch (error) {
+		sendError(res, error);
+	}
+});
+
+app.get("/api/plans", (req, res) => {
+	res.json({
+		success: true,
+		plans: getPlans(getSessionId(req)),
+	});
+});
+
+app.post("/api/plans", (req, res) => {
+	try {
+		const plan = createDailyPlan(getSessionId(req), req.body?.prompt || "");
+		res.json({ success: true, plan });
+	} catch (error) {
+		sendError(res, error);
+	}
+});
+
 app.post("/api/ai/chat", async (req, res) => {
 	const startedAt = Date.now();
 	try {
@@ -153,6 +207,8 @@ app.post("/api/ai/chat", async (req, res) => {
 
 app.post("/api/ai/stream", async (req, res) => {
 	const startedAt = Date.now();
+	const sessionId = getSessionId(req);
+	const toolInfo = handleAssistantToolRequest(req.body, sessionId);
 	res.writeHead(200, {
 		"Content-Type": "text/event-stream; charset=utf-8",
 		"Cache-Control": "no-cache, no-transform",
@@ -160,9 +216,20 @@ app.post("/api/ai/stream", async (req, res) => {
 	});
 
 	try {
+		if (toolInfo) {
+			res.write(
+				`data: ${JSON.stringify({
+					type: "tool",
+					tool: toolInfo.tool,
+					message: toolInfo.message,
+					result: toolInfo.result,
+				})}\n\n`,
+			);
+		}
+
 		for await (const event of ai.stream({
 			...req.body,
-			sessionId: getSessionId(req),
+			sessionId,
 		})) {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			if (event.type === "done") {
@@ -255,6 +322,65 @@ function getSessionId(req) {
 		req.ip ||
 		"default-session"
 	);
+}
+
+function handleAssistantToolRequest(request = {}, sessionId) {
+	const message = String(request.message || "").trim();
+	if (!message) return null;
+
+	if (/\bplan my day\b|\bplan my schedule\b|\bcreate a daily plan\b|\bwhat should i do today\b/i.test(message)) {
+		const plan = createDailyPlan(sessionId, message);
+		return {
+			tool: "daily_plan",
+			message: "I created a daily plan based on your active tasks and reminders.",
+			result: plan,
+		};
+	}
+
+	if (/\bremind me\b/i.test(message)) {
+		const reminderTitle = message
+			.replace(/^.*?\bremind me\b/i, "")
+			.replace(/^(?:tomorrow|today|on|about|to)\s+/i, "")
+			.replace(/[.!?]+$/, "")
+			.trim();
+
+		if (reminderTitle) {
+			const reminder = addReminder(sessionId, {
+				title: reminderTitle,
+				when: /tomorrow/i.test(message) ? "tomorrow 09:00" : "today 18:00",
+			});
+			return {
+				tool: "reminder",
+				message: "I created a reminder for you.",
+				result: reminder[0],
+			};
+		}
+	}
+
+	if (/\badd task\b|\badd to-do\b|\badd todo\b|\bnew task\b/i.test(message)) {
+		const taskTitle = message
+			.replace(/^.*?\b(add task|add to-do|add todo|new task)\b/i, "")
+			.replace(/^[\s:-]+/, "")
+			.replace(/[.!?]+$/, "")
+			.trim();
+
+		if (taskTitle) {
+			const tasks = addTask(sessionId, {
+				title: taskTitle,
+				priority: "medium",
+				status: "queued",
+				due: "later",
+				category: "task",
+			});
+			return {
+				tool: "task",
+				message: "I added the task to your workspace.",
+				result: tasks[0],
+			};
+		}
+	}
+
+	return null;
 }
 
 function sanitizeProfile(input = {}) {

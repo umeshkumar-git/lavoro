@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "npm --prefix backend run dev",
     "start": "npm --prefix backend start",
-    "health": "npm --prefix backend run health"
+    "health": "npm --prefix backend run health",
+    "test": "node --test tests/**/*.test.js",
+    "lint": "node --check backend/server.js && node --check frontend/script.js",
+    "typecheck": "node --check backend/server.js && node --check frontend/script.js",
+    "build": "node --check backend/server.js && node --check frontend/script.js && node -e \"const fs=require('fs'); ['frontend/index.html','frontend/style.css','frontend/script.js'].forEach(f => { if (!fs.existsSync(f)) throw new Error('Missing asset: ' + f); }); console.log('Static build assets verified');\""
   }
 }
