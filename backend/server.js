@@ -59,7 +59,9 @@ const ai = new AIOrchestrator({
 if (primaryProvider.isConfigured()) {
 	console.log(`Gemini configured. Primary model: ${GEMINI_MODEL}`);
 } else {
-	console.warn("GEMINI_API_KEY is not set. Developer Mentor AI will use demo responses.");
+	console.warn(
+		"GEMINI_API_KEY is not set. Developer Mentor AI will use demo responses.",
+	);
 }
 
 app.use(
@@ -102,7 +104,9 @@ app.get("/api/health", (req, res) => {
 		database: "in-memory",
 		auth: "none-local-session",
 		model: primaryProvider.isConfigured() ? GEMINI_MODEL : "demo",
-		modelFallbacks: primaryProvider.isConfigured() ? GEMINI_MODEL_FALLBACKS : [],
+		modelFallbacks: primaryProvider.isConfigured()
+			? GEMINI_MODEL_FALLBACKS
+			: [],
 	});
 });
 
@@ -122,7 +126,10 @@ app.get("/api/profile", (req, res) => {
 
 app.post("/api/profile", (req, res) => {
 	try {
-		const profile = updateProfile(getSessionId(req), sanitizeProfile(req.body));
+		const profile = updateProfile(
+			getSessionId(req),
+			sanitizeProfile(req.body),
+		);
 		res.json({ success: true, profile });
 	} catch (error) {
 		sendError(res, error);
@@ -328,11 +335,16 @@ function handleAssistantToolRequest(request = {}, sessionId) {
 	const message = String(request.message || "").trim();
 	if (!message) return null;
 
-	if (/\bplan my day\b|\bplan my schedule\b|\bcreate a daily plan\b|\bwhat should i do today\b/i.test(message)) {
+	if (
+		/\bplan my day\b|\bplan my schedule\b|\bcreate a daily plan\b|\bwhat should i do today\b/i.test(
+			message,
+		)
+	) {
 		const plan = createDailyPlan(sessionId, message);
 		return {
 			tool: "daily_plan",
-			message: "I created a daily plan based on your active tasks and reminders.",
+			message:
+				"I created a daily plan based on your active tasks and reminders.",
 			result: plan,
 		};
 	}
@@ -347,7 +359,9 @@ function handleAssistantToolRequest(request = {}, sessionId) {
 		if (reminderTitle) {
 			const reminder = addReminder(sessionId, {
 				title: reminderTitle,
-				when: /tomorrow/i.test(message) ? "tomorrow 09:00" : "today 18:00",
+				when: /tomorrow/i.test(message)
+					? "tomorrow 09:00"
+					: "today 18:00",
 			});
 			return {
 				tool: "reminder",
@@ -393,7 +407,12 @@ function sanitizeProfile(input = {}) {
 		"targetRole",
 		"preferredStyle",
 	];
-	const listFields = ["languages", "technologies", "strongTopics", "weakTopics"];
+	const listFields = [
+		"languages",
+		"technologies",
+		"strongTopics",
+		"weakTopics",
+	];
 
 	for (const field of stringFields) {
 		if (typeof input[field] === "string") {

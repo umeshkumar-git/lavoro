@@ -78,9 +78,18 @@ function updateProfile(sessionId, updates) {
 		...session.profile,
 		...updates,
 		languages: normalizeList(updates.languages, session.profile.languages),
-		technologies: normalizeList(updates.technologies, session.profile.technologies),
-		strongTopics: normalizeList(updates.strongTopics, session.profile.strongTopics),
-		weakTopics: normalizeList(updates.weakTopics, session.profile.weakTopics),
+		technologies: normalizeList(
+			updates.technologies,
+			session.profile.technologies,
+		),
+		strongTopics: normalizeList(
+			updates.strongTopics,
+			session.profile.strongTopics,
+		),
+		weakTopics: normalizeList(
+			updates.weakTopics,
+			session.profile.weakTopics,
+		),
 	};
 
 	session.profile = nextProfile;
@@ -159,7 +168,9 @@ function addReminder(sessionId, reminder) {
 
 function createDailyPlan(sessionId, prompt = "") {
 	const session = getSession(sessionId);
-	const tasks = (session.tasks || []).filter((task) => task.status !== "done");
+	const tasks = (session.tasks || []).filter(
+		(task) => task.status !== "done",
+	);
 	const reminders = (session.reminders || []).slice(0, 3);
 	const focus = tasks.slice(0, 3);
 	const summary = focus.length
