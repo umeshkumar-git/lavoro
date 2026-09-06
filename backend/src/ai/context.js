@@ -14,6 +14,7 @@ function buildAssistantContext({
 	teachingStyle,
 	projectStructure,
 	attachments = [],
+	dailyAssistantContext = null,
 }) {
 	const profile = getProfile(sessionId);
 	const history = getConversation(sessionId).slice(-12);
@@ -32,6 +33,7 @@ function buildAssistantContext({
 		tasks,
 		reminders,
 		plans,
+		dailyAssistant: dailyAssistantContext,
 		project: projectStructure
 			? {
 					summary: projectStructure.summary,

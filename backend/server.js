@@ -60,7 +60,7 @@ if (primaryProvider.isConfigured()) {
 	console.log(`Gemini configured. Primary model: ${GEMINI_MODEL}`);
 } else {
 	console.warn(
-		"GEMINI_API_KEY is not set. Developer Mentor AI will use demo responses.",
+		"GEMINI_API_KEY is not set. Lavoro will use demo responses.",
 	);
 }
 
@@ -98,7 +98,7 @@ app.get("/api/health", (req, res) => {
 	res.json({
 		success: true,
 		status: "healthy",
-		service: "Developer Mentor AI",
+		service: "Lavoro: Personal Daily Assistant",
 		frontend: "vanilla-html-css-js",
 		backend: "express",
 		database: "in-memory",
@@ -446,12 +446,12 @@ function sendError(res, error) {
 
 function publicErrorMessage(error) {
 	if (error.statusCode && error.statusCode < 500) return error.message;
-	return "Developer Mentor AI is temporarily unavailable. Please try again.";
+	return "Lavoro is temporarily unavailable. Please try again.";
 }
 
 app.listen(PORT, "0.0.0.0", () => {
 	console.log("-----------------------------------------");
-	console.log(`Developer Mentor AI is running at http://localhost:${PORT}`);
+	console.log(`Lavoro is running at http://localhost:${PORT}`);
 	console.log(`Health check: http://localhost:${PORT}/api/health`);
 	console.log("-----------------------------------------");
 });

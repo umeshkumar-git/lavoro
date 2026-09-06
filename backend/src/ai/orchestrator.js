@@ -109,6 +109,9 @@ class AIOrchestrator {
 			teachingStyle,
 			projectStructure,
 			attachments,
+			dailyAssistantContext: validateDailyAssistantContext(
+				request.assistantContext,
+			),
 		});
 
 		return {
@@ -167,6 +170,39 @@ function validateAttachments(attachments) {
 		language: String(attachment.language || "text").slice(0, 40),
 		content: String(attachment.content || "").slice(0, 12_000),
 	}));
+}
+
+function validateDailyAssistantContext(context) {
+	if (!context || typeof context !== "object" || Array.isArray(context)) {
+		return null;
+	}
+
+	return {
+		weather: String(context.weather || "").slice(0, 500),
+		calendarEvents: sanitizeList(context.calendarEvents, 8),
+		importantEmails: sanitizeList(context.importantEmails, 8),
+		tasks: sanitizeList(context.tasks, 12),
+		reminders: sanitizeList(context.reminders, 8),
+	};
+}
+
+function sanitizeList(items, limit) {
+	if (!Array.isArray(items)) return [];
+
+	return items.slice(0, limit).map((item) => {
+		if (!item || typeof item !== "object") {
+			return String(item || "").slice(0, 300);
+		}
+
+		return Object.fromEntries(
+			Object.entries(item)
+				.slice(0, 12)
+				.map(([key, value]) => [
+					String(key).slice(0, 80),
+					typeof value === "boolean" ? value : String(value ?? "").slice(0, 500),
+				]),
+		);
+	});
 }
 
 function recordLearningMemory(sessionId, message, mode) {

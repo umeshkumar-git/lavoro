@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const APP_URL = process.env.APP_URL || "http://localhost:10000";
+const APP_URL = process.env.APP_URL || "http://127.0.0.1:10000";
 
 test("health endpoint is available and reports healthy status", async () => {
 	const response = await fetch(`${APP_URL}/api/health`);
@@ -11,7 +11,7 @@ test("health endpoint is available and reports healthy status", async () => {
 	assert.equal(payload.status, "healthy", "status should be healthy");
 	assert.equal(
 		payload.service,
-		"Developer Mentor AI",
+		"Lavoro: Personal Daily Assistant",
 		"service name should match the app",
 	);
 	assert.equal(
@@ -28,7 +28,7 @@ test("homepage serves the app shell with the premium dashboard HTML", async () =
 	const html = await response.text();
 	assert.match(
 		html,
-		/Developer Mentor AI/,
+		/Lavoro: Personal Daily Assistant/,
 		"page should include the application title",
 	);
 	assert.match(

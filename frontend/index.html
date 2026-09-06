@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Developer Mentor AI — Personal Engineering Mentor</title>
+		<title>Lavoro: Personal Daily Assistant</title>
 		<link rel="stylesheet" href="style.css" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<link
@@ -16,181 +16,130 @@
 		/>
 	</head>
 	<body>
-		<div class="app-shell">
-			<aside class="sidebar">
-				<div class="brand" aria-label="Daily Assistance">
-					<div class="logo"><i class="fas fa-terminal"></i></div>
-				</div>
-
-				<nav class="sidebar-nav" aria-label="Main navigation">
-					<button
-						class="nav-item active"
-						type="button"
-						aria-label="Overview"
-					>
-						<i class="fas fa-house"></i>
-					</button>
-					<button
-						class="nav-item"
-						type="button"
-						aria-label="Learning"
-					>
-						<i class="fas fa-book-open"></i>
-					</button>
-					<button
-						class="nav-item"
-						type="button"
-						aria-label="Projects"
-					>
-						<i class="fas fa-diagram-project"></i>
-					</button>
-					<button
-						class="nav-item"
-						type="button"
-						aria-label="Mentor chat"
-					>
-						<i class="fas fa-comments"></i>
-					</button>
-				</nav>
-
-				<section class="panel-section">
-					<div class="section-header">
-						<h2>Modes</h2>
+		<div class="page-shell">
+			<div class="app-shell">
+				<header class="app-header">
+					<div class="brand-lockup">
+						<img
+							src="/lavoro-logo.png"
+							alt="Lavoro logo"
+							class="brand-logo"
+						/>
+						<div>
+							<p class="header-kicker">Good morning, Umesh</p>
+							<h1>Lavoro: Personal Daily Assistant</h1>
+						</div>
 					</div>
-					<div id="modeList" class="mode-list"></div>
-				</section>
-
-				<section class="panel-section compact-panel">
-					<div class="section-header">
-						<h2>Level</h2>
-					</div>
-					<select id="levelSelect" class="select-control">
-						<option value="beginner">Beginner</option>
-						<option value="intermediate" selected>
-							Intermediate
-						</option>
-						<option value="advanced">Advanced</option>
-						<option value="interview">Interview</option>
-					</select>
-				</section>
-
-				<section class="panel-section compact-panel">
-					<div class="section-header">
-						<h2>Teaching</h2>
-					</div>
-					<select id="teachingSelect" class="select-control">
-						<option value="direct" selected>Direct</option>
-						<option value="socratic">Socratic</option>
-						<option value="beginner">Beginner</option>
-						<option value="expert">Expert</option>
-					</select>
-				</section>
-
-				<div class="sidebar-actions">
-					<button id="newChatBtn" class="secondary-btn" type="button">
-						<i class="fas fa-rotate-right"></i>
-						New chat
-					</button>
-				</div>
-			</aside>
-
-			<main class="main-workspace">
-				<header class="topbar">
-					<div id="healthBadge" class="health-badge">
+					<div id="healthBadge" class="health-badge" role="status">
 						<span class="status-dot"></span>
 						Checking backend
 					</div>
-
-					<div class="topbar-actions">
-						<button
-							id="themeToggle"
-							class="icon-btn"
-							type="button"
-							aria-label="Toggle theme"
-						>
-							<i class="fas fa-moon"></i>
-						</button>
-						<div class="profile-pill" aria-label="Profile">
-							<div class="avatar">US</div>
-							<div class="profile-meta">
-								<span class="profile-role">Student</span>
-								<strong>Umesh</strong>
-							</div>
-						</div>
-					</div>
 				</header>
 
-				<section class="hero" aria-label="Welcome">
-					<p class="eyebrow">Hello</p>
-					<h1>Hey, Umesh — What can I help with?</h1>
-				</section>
+				<main class="dashboard" aria-live="polite">
+					<nav class="quick-actions" aria-label="Quick actions">
+						<button
+							class="quick-action active"
+							type="button"
+							data-view="briefing"
+							aria-pressed="true"
+						>
+							<span class="action-icon" aria-hidden="true"
+								>📅</span
+							>
+							<span>Morning Briefing</span>
+						</button>
+						<button
+							class="quick-action"
+							type="button"
+							data-view="email"
+							aria-pressed="false"
+						>
+							<span class="action-icon" aria-hidden="true"
+								>📧</span
+							>
+							<span>Email Summary</span>
+						</button>
+						<button
+							class="quick-action"
+							type="button"
+							data-view="tasks"
+							aria-pressed="false"
+						>
+							<span class="action-icon" aria-hidden="true"
+								>⭐</span
+							>
+							<span>Prioritize Tasks</span>
+						</button>
+						<button
+							class="quick-action"
+							type="button"
+							data-view="planner"
+							aria-pressed="false"
+						>
+							<span class="action-icon" aria-hidden="true"
+								>🗓️</span
+							>
+							<span>Plan My Day</span>
+						</button>
+					</nav>
 
-				<section class="quick-actions" aria-label="Quick actions">
-					<button
-						type="button"
-						class="quick-card"
-						data-prompt="Plan my day with a clear focus list, priorities, and timeline for deep work."
+					<section
+						id="contentArea"
+						class="content-area"
+						aria-label="Assistant dashboard"
 					>
-						<span class="quick-icon"
-							><i class="fas fa-calendar-check"></i
-						></span>
-						<span class="quick-text">Plan my day</span>
-					</button>
-					<button
-						type="button"
-						class="quick-card"
-						data-prompt="Help me study this topic with a focused learning plan, examples, and practice exercises."
-					>
-						<span class="quick-icon"
-							><i class="fas fa-graduation-cap"></i
-						></span>
-						<span class="quick-text">Help me study</span>
-					</button>
-					<button
-						type="button"
-						class="quick-card"
-						data-prompt="Debug my code by identifying likely root causes, reasoning through the stack, and suggesting a fix."
-					>
-						<span class="quick-icon"
-							><i class="fas fa-bug"></i
-						></span>
-						<span class="quick-text">Debug my code</span>
-					</button>
-					<button
-						type="button"
-						class="quick-card"
-						data-prompt="Review my project for architecture quality, risks, usability, and what I should improve next."
-					>
-						<span class="quick-icon"
-							><i class="fas fa-layer-group"></i
-						></span>
-						<span class="quick-text">Review my project</span>
-					</button>
-				</section>
+						<div class="loading-card">Loading your day...</div>
+					</section>
 
-				<section class="chat-panel">
-					<div id="chatMessages" class="chat-messages"></div>
-					<div
-						id="attachmentTray"
-						class="attachment-tray"
-						hidden
-					></div>
-
-					<form id="chatForm" class="composer">
-						<div class="composer-topline">
-							<span>Ask your assistant</span>
-							<span class="tiny-pill">AI ready</span>
+					<section class="chat-panel" aria-labelledby="chatTitle">
+						<div class="chat-panel-header">
+							<div>
+								<p class="section-label">AI Assistant</p>
+								<h2 id="chatTitle">Ask about your day</h2>
+							</div>
+							<button
+								id="resetChatBtn"
+								class="secondary-btn"
+								type="button"
+							>
+								<i
+									class="fas fa-rotate-right"
+									aria-hidden="true"
+								></i>
+								Reset Chat
+							</button>
 						</div>
-						<textarea
-							id="userInput"
-							rows="1"
-							placeholder="Describe what you want help with..."
-						></textarea>
-						<div class="composer-actions">
-							<div class="composer-tools">
+
+						<div
+							id="chatMessages"
+							class="chat-messages"
+							role="log"
+							aria-live="polite"
+							aria-label="Chat messages"
+						></div>
+						<div
+							id="attachmentTray"
+							class="attachment-tray"
+							hidden
+						></div>
+
+						<form id="chatForm" class="composer">
+							<label class="sr-only" for="userInput"
+								>Ask me anything about your day</label
+							>
+							<textarea
+								id="userInput"
+								rows="1"
+								placeholder="Ask me anything about your day..."
+							></textarea>
+							<div class="composer-actions">
 								<label class="attach-btn" for="fileInput">
-									<i class="fas fa-paperclip"></i>
-									Attach file
+									<i
+										class="fas fa-paperclip"
+										aria-hidden="true"
+									></i>
+									Attach
 								</label>
 								<input
 									id="fileInput"
@@ -205,129 +154,23 @@
 									/>
 									<span>Use project context</span>
 								</label>
-							</div>
-							<div class="composer-tools right-tools">
-								<button
-									id="stopBtn"
-									type="button"
-									class="secondary-btn"
-									disabled
-								>
-									<i class="fas fa-stop"></i>
-									Stop
-								</button>
 								<button
 									id="sendBtn"
-									type="submit"
 									class="primary-btn"
+									type="submit"
 								>
-									<i class="fas fa-paper-plane"></i>
+									<i
+										class="fas fa-paper-plane"
+										aria-hidden="true"
+									></i>
 									Send
 								</button>
 							</div>
-						</div>
-					</form>
-				</section>
-			</main>
-
-			<aside class="context-panel">
-				<section class="context-card">
-					<div class="context-header">
-						<h2>Student profile</h2>
-					</div>
-					<form id="profileForm" class="profile-form">
-						<label>
-							<span>Experience</span>
-							<input
-								id="profileExperience"
-								name="experienceLevel"
-							/>
-						</label>
-						<label>
-							<span>Languages</span>
-							<input id="profileLanguages" name="languages" />
-						</label>
-						<label>
-							<span>Goal</span>
-							<input id="profileGoal" name="goal" />
-						</label>
-						<label>
-							<span>Current project</span>
-							<input id="profileProject" name="currentProject" />
-						</label>
-						<button class="secondary-btn" type="submit">
-							<i class="fas fa-save"></i>
-							Save profile
-						</button>
-					</form>
-				</section>
-
-				<section class="context-card">
-					<div class="context-header">
-						<h2>Workspace</h2>
-					</div>
-					<div id="projectSummary" class="workspace-summary">
-						Loading project...
-					</div>
-				</section>
-
-				<section class="context-card">
-					<div class="context-header">
-						<h2>Today</h2>
-					</div>
-					<ul id="taskList" class="stack-list"></ul>
-				</section>
-
-				<section class="context-card">
-					<div class="context-header">
-						<h2>Reminders</h2>
-					</div>
-					<ul id="reminderList" class="stack-list"></ul>
-				</section>
-
-				<section class="context-card">
-					<div class="context-header">
-						<h2>Daily plan</h2>
-					</div>
-					<div id="dailyPlan" class="workspace-summary">
-						No plan generated yet.
-					</div>
-				</section>
-
-				<section class="context-card">
-					<div class="context-header">
-						<h2>Quick starts</h2>
-					</div>
-					<div class="quick-list">
-						<button
-							type="button"
-							data-prompt="Explain React useEffect dependencies at an intermediate level."
-						>
-							React hooks
-						</button>
-						<button
-							type="button"
-							data-prompt="Debug this error: Cannot read properties of undefined. Teach me how to reason about it."
-						>
-							Debug error
-						</button>
-						<button
-							type="button"
-							data-prompt="Review this function for correctness, performance, security, and tests."
-						>
-							Code review
-						</button>
-						<button
-							type="button"
-							data-prompt="Create a project plan for a full-stack expense tracker."
-						>
-							Project plan
-						</button>
-					</div>
-				</section>
-			</aside>
+						</form>
+					</section>
+				</main>
+			</div>
 		</div>
 		<script src="script.js"></script>
 	</body>
 </html>
-<script src="script.js"></script>

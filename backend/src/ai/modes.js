@@ -49,11 +49,19 @@ const AI_MODES = {
 			"Guide through requirements, scale, APIs, data model, caching, queues, storage, reliability, observability, security, and tradeoffs.",
 	},
 	planner: {
-		label: "Learning Path",
-		description: "Create personalized learning plans and track progress.",
-		keywords: ["learning path", "roadmap", "study plan", "weak topic", "progress"],
+		label: "Daily Planner",
+		description: "Plan the day with calendar, email, tasks, reminders, and focus blocks.",
+		keywords: [
+			"plan my day",
+			"meetings",
+			"calendar",
+			"email",
+			"priority",
+			"task",
+			"schedule",
+		],
 		responseGuide:
-			"Connect the plan to the student's profile, goals, weak areas, projects, and available study time. Keep milestones measurable.",
+			"Summarize the day, identify urgent items, recommend a sequence of work, and keep schedule suggestions realistic.",
 	},
 };
 
