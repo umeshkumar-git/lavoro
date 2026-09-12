@@ -1,0 +1,24 @@
+const path = require("path");
+
+const config = {
+	appName: "Lavoro: Personal Daily Assistant",
+	port: Number(process.env.PORT || 10000),
+	projectRoot: path.resolve(__dirname, "../../.."),
+	frontendDir: path.resolve(__dirname, "../../../frontend"),
+	jwt: {
+		secret: process.env.JWT_SECRET || "lavoro-dev-secret",
+		accessTtl: process.env.JWT_ACCESS_TTL || "15m",
+		refreshTtl: process.env.JWT_REFRESH_TTL || "7d",
+	},
+	redis: {
+		url: process.env.REDIS_URL || "redis://localhost:6379",
+	},
+	allowedOrigins: new Set([
+		"https://lavoro.umeshshah.in",
+		"https://umeshshah.in",
+		"https://www.umeshshah.in",
+		"https://api.lavoro.umeshshah.in",
+	]),
+};
+
+module.exports = config;
