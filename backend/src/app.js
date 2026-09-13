@@ -4,7 +4,6 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const rateLimit = require("express-rate-limit");
 
 const config = require("./config");
 const logger = require("./config/logger");
@@ -61,11 +60,14 @@ if (primaryProvider.isConfigured()) {
 }
 
 app.use((req, res, next) => {
-	logger.info({
-		method: req.method,
-		url: req.originalUrl,
-		host: req.headers.host,
-	}, "Incoming request");
+	logger.info(
+		{
+			method: req.method,
+			url: req.originalUrl,
+			host: req.headers.host,
+		},
+		"Incoming request",
+	);
 	next();
 });
 
@@ -96,16 +98,7 @@ app.use(
 	}),
 );
 app.use(express.json({ limit: "1mb" }));
-app.use(
-	"/api",
-	rateLimit({
-		windowMs: 60_000,
-		max: 60,
-		standardHeaders: true,
-		legacyHeaders: false,
-		message: { success: false, message: "Too many requests. Please slow down." },
-	}),
-);
+
 app.use("/api", createRateLimiter({ windowMs: 60_000, max: 60 }));
 app.use("/api", apiRoutes);
 app.use(express.static(frontendDir));
@@ -120,7 +113,9 @@ app.get("/api/health", (req, res) => {
 		database: "in-memory",
 		auth: "jwt-rotation",
 		model: primaryProvider.isConfigured() ? GEMINI_MODEL : "demo",
-		modelFallbacks: primaryProvider.isConfigured() ? GEMINI_MODEL_FALLBACKS : [],
+		modelFallbacks: primaryProvider.isConfigured()
+			? GEMINI_MODEL_FALLBACKS
+			: [],
 	});
 });
 
@@ -134,7 +129,10 @@ app.get("/api/profile", (req, res) => {
 
 app.post("/api/profile", (req, res) => {
 	try {
-		const profile = updateProfile(getSessionId(req), sanitizeProfile(req.body));
+		const profile = updateProfile(
+			getSessionId(req),
+			sanitizeProfile(req.body),
+		);
 		res.json({ success: true, profile });
 	} catch (error) {
 		sendError(res, error);
@@ -260,7 +258,10 @@ app.post("/api/reset", (req, res) => {
 
 app.get("/api/project/structure", async (req, res) => {
 	try {
-		res.json({ success: true, project: await getProjectStructure(projectRoot) });
+		res.json({
+			success: true,
+			project: await getProjectStructure(projectRoot),
+		});
 	} catch (error) {
 		sendError(res, error);
 	}
@@ -268,7 +269,10 @@ app.get("/api/project/structure", async (req, res) => {
 
 app.get("/api/project/file", async (req, res) => {
 	try {
-		res.json({ success: true, file: await readProjectFile(projectRoot, req.query.path) });
+		res.json({
+			success: true,
+			file: await readProjectFile(projectRoot, req.query.path),
+		});
 	} catch (error) {
 		sendError(res, error);
 	}
@@ -276,7 +280,10 @@ app.get("/api/project/file", async (req, res) => {
 
 app.get("/api/project/search", async (req, res) => {
 	try {
-		res.json({ success: true, results: await searchProject(projectRoot, req.query.q) });
+		res.json({
+			success: true,
+			results: await searchProject(projectRoot, req.query.q),
+		});
 	} catch (error) {
 		sendError(res, error);
 	}
@@ -292,18 +299,28 @@ app.use((error, req, res, next) => {
 });
 
 function getSessionId(req) {
-	return req.headers["x-session-id"] || req.body?.sessionId || req.ip || "default-session";
+	return (
+		req.headers["x-session-id"] ||
+		req.body?.sessionId ||
+		req.ip ||
+		"default-session"
+	);
 }
 
 function handleAssistantToolRequest(request = {}, sessionId) {
 	const message = String(request.message || "").trim();
 	if (!message) return null;
 
-	if (/\bplan my day\b|\bplan my schedule\b|\bcreate a daily plan\b|\bwhat should i do today\b/i.test(message)) {
+	if (
+		/\bplan my day\b|\bplan my schedule\b|\bcreate a daily plan\b|\bwhat should i do today\b/i.test(
+			message,
+		)
+	) {
 		const plan = createDailyPlan(sessionId, message);
 		return {
 			tool: "daily_plan",
-			message: "I created a daily plan based on your active tasks and reminders.",
+			message:
+				"I created a daily plan based on your active tasks and reminders.",
 			result: plan,
 		};
 	}
@@ -318,7 +335,9 @@ function handleAssistantToolRequest(request = {}, sessionId) {
 		if (reminderTitle) {
 			const reminder = addReminder(sessionId, {
 				title: reminderTitle,
-				when: /tomorrow/i.test(message) ? "tomorrow 09:00" : "today 18:00",
+				when: /tomorrow/i.test(message)
+					? "tomorrow 09:00"
+					: "today 18:00",
 			});
 			return {
 				tool: "reminder",
