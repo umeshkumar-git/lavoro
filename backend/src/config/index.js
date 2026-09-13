@@ -1,12 +1,26 @@
 const path = require("path");
 
+function requireJwtSecret() {
+	const secret = process.env.JWT_SECRET;
+	if (secret) return secret;
+
+	if (process.env.NODE_ENV === "production") {
+		throw new Error("JWT_SECRET must be set in production.");
+	}
+
+	console.warn(
+		"⚠️  JWT_SECRET not set — using an insecure dev-only fallback.",
+	);
+	return "lavoro-dev-secret-DO-NOT-USE-IN-PROD";
+}
+
 const config = {
 	appName: "Lavoro: Personal Daily Assistant",
 	port: Number(process.env.PORT || 10000),
 	projectRoot: path.resolve(__dirname, "../../.."),
 	frontendDir: path.resolve(__dirname, "../../../frontend"),
 	jwt: {
-		secret: process.env.JWT_SECRET || "lavoro-dev-secret",
+		secret: requireJwtSecret(),
 		accessTtl: process.env.JWT_ACCESS_TTL || "15m",
 		refreshTtl: process.env.JWT_REFRESH_TTL || "7d",
 	},
