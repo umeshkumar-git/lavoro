@@ -1,11 +1,15 @@
 # Lavoro - AI-Powered Personal Daily Assistant
 
-An intelligent AI agent that automates daily tasks and improves individual workflows. This project was developed as a capstone project for the **Google AI Agents Intensive Course**.
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5.0-blue)](https://expressjs.com/)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-AI-yellow)](https://ai.google.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen)](https://github.com/umeshkumar-git/lavoro)
 
-![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)  
-![Express](https://img.shields.io/badge/Express-5-black.svg)  
-![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Pro-orange.svg)  
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)  
+🎬 **[Try Live Demo →](https://lavoro.umeshshah.in)**
+
+
+An intelligent AI agent that automates daily tasks and improves individual workflows. This project was developed as a capstone project for the **Google AI Agents Intensive Course**.
 
 ## Table of Contents
 - [Overview](#overview)
