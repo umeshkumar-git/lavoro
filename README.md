@@ -30,6 +30,7 @@ Lavoro is an intelligent, full-stack AI productivity platform that combines conv
 - [Testing & Quality Checks](#testing--quality-checks)
 - [Performance & Latency Benchmarks](#performance--latency-benchmarks)
 - [CI/CD Pipeline](#cicd-pipeline)
+- [Interview & Resume Prep Guide](#interview--resume-prep-guide)
 - [Roadmap](#roadmap)
 - [License](#license)
 
@@ -403,6 +404,15 @@ The GitHub Actions workflow at [.github/workflows/ci.yml](file:///Users/umeshsha
 3. Installs clean dependencies via `npm ci` and `npm --prefix backend ci`.
 4. Runs lint checks via `npm run lint`.
 5. Executes the full test suite and c8 coverage via `npm run test:coverage`.
+
+---
+
+## Interview & Resume Prep Guide
+
+A dedicated interview preparation guide is available in [`docs/INTERVIEW_PREP.md`](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/docs/INTERVIEW_PREP.md), including:
+- **3 Quantified Resume Bullets**: Specific, checkable numbers backed by code and automated benchmarks.
+- **90-Second Verbal Pitch**: A natural verbal walkthrough explaining the system, engineering trade-offs, and architecture without buzzwords.
+- **10 Technical Interview Questions & Honest Answers**: Comprehensive architectural deep-dives covering cosine similarity vs. ANN, refresh token rotation, in-flight job resiliency, LLM loop limits, and path traversal security guards.
 
 ---
 
