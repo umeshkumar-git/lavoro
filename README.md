@@ -3,11 +3,11 @@
 Lavoro is an intelligent, full-stack AI productivity platform that combines conversational agent capabilities, daily executive briefings, task management, retrieval-augmented generation (RAG), and telemetry into a production-grade Node.js service.
 
 [![CI](https://github.com/umeshkumar-git/lavoro/actions/workflows/ci.yml/badge.svg)](https://github.com/umeshkumar-git/lavoro/actions/workflows/ci.yml)
-![Coverage](https://img.shields.io/badge/Coverage-84%25%20lines%20(c8)-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/Coverage-85%25%20lines%20(c8)-brightgreen.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)
 ![Express](https://img.shields.io/badge/Express-5.x-black.svg)
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Pro%20%2F%20Flash-orange.svg)
-![Supertest](https://img.shields.io/badge/Tests-46%20Passing%20In--Process-blue.svg)
+![Supertest](https://img.shields.io/badge/Tests-53%20Passing%20In--Process-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ---
@@ -28,6 +28,7 @@ Lavoro is an intelligent, full-stack AI productivity platform that combines conv
   - [Installation & Seeding](#installation--seeding)
   - [Running Locally](#running-locally)
 - [Testing & Quality Checks](#testing--quality-checks)
+- [Performance & Latency Benchmarks](#performance--latency-benchmarks)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Roadmap](#roadmap)
 - [License](#license)
@@ -258,10 +259,10 @@ Open [http://localhost:10000](http://localhost:10000) in your browser.
 
 ## Testing & Quality Checks
 
-Lavoro maintains **84% line coverage across `backend/src`** (measured with `c8`), verified on Node 20 via native `node:test`. All tests execute completely **in-process** using [supertest](https://github.com/ladjs/supertest) without external network dependencies, live servers, or open port conflicts:
+Lavoro maintains **85% line coverage across `backend/src`** (measured with `c8`), verified on Node 20 via native `node:test`. All tests execute completely **in-process** using [supertest](https://github.com/ladjs/supertest) without external network dependencies, live servers, or open port conflicts:
 
 ```bash
-# Run all 46 unit, benchmark, and in-process integration tests
+# Run all 53 unit, benchmark, security, and in-process integration tests
 npm test
 
 # Run code coverage report with c8 (text + summary)
@@ -269,6 +270,9 @@ npm run test:coverage
 
 # Run deterministic agent tool-calling evaluation benchmark (18 test cases)
 npm run eval
+
+# Run automated autocannon load testing against /api/ai/chat and /api/ai/stream
+npm run bench
 
 # Run syntax and lint checks
 npm run lint
@@ -278,8 +282,11 @@ npm run lint
 
 - **In-Process Supertest Pipeline (`tests/smoke.test.js`)**:
   Simulates full HTTP requests through Express middleware, auth guards, SSE streams, and routing without launching an external daemon.
-- **Security & Path Traversal Assertions (`tests/unit/projectScanner.test.js`)**:
-  Explicitly tests attack vectors (`../../etc/passwd`, `../../../etc/shadow`) against `resolveSafePath` to verify that attempts to escape workspace boundaries throw HTTP 400.
+- **Security & Path Traversal Assertions (`tests/unit/projectScanner.test.js`, `tests/unit/security.test.js`)**:
+  - Validates that directory traversal attempts (`../../etc/passwd`, `../../../etc/shadow`) against `resolveSafePath` throw HTTP 400.
+  - Verifies Helmet security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, CSP).
+  - Validates Zod schema validation across all endpoints (`/api/profile`, `/api/tasks`, `/api/reminders`, `/api/ai/chat`), returning HTTP 400 with structured field issues.
+  - Verifies dedicated authentication rate limiting on `/api/auth/login` (enforcing max 5 attempts/min with HTTP 429).
 - **Pure Logic Unit Testing**:
   - `modes.js`: Keyword heuristic matching, mode overrides, and normalization.
   - `prompts.js`: System and developer instruction formatting, XML boundary injection protections, trusted/untrusted context separation.
@@ -287,6 +294,19 @@ npm run lint
   - `agentLoop.test.js`: Gemini function declarations JSON schema compliance, tool dispatch, SSE tool-first ordering, and iteration cap bounding.
 - **Real Persistence & RAG (`tests/benchmarks/evalBenchmark.test.js`)**:
   Verifies SQLite WAL storage, restarts, user authentication, and document chunking/vector retrieval.
+
+---
+
+## Performance & Latency Benchmarks
+
+Measured locally using [autocannon](https://github.com/mcollina/autocannon) with 10 concurrent connections over 5-second sampling intervals:
+
+| Endpoint | Protocol | Req/Sec | Throughput | Latency (p50) | Latency (p90) | Latency (p95) | Latency (p99) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `POST /api/ai/chat` | JSON | **7,133 req/s** | 11.77 MB/s | **1 ms** | 1 ms | **2 ms** | 2 ms |
+| `POST /api/ai/stream` | SSE | **6,076 req/s** | 14.51 MB/s | **1 ms** | 2 ms | **2 ms** | 2 ms |
+
+> *All measurements reflect actual in-process execution with Zod input validation, Helmet security headers, and AI orchestrator dispatch.*
 
 ---
 

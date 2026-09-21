@@ -1,21 +1,15 @@
 const express = require("express");
 const { loginSchema, refreshTokenSchema } = require("../shared/schemas");
+const { validateBody } = require("../middleware/validation");
+const { authRateLimiter } = require("../middleware/rateLimit");
 const { authenticate } = require("../middleware/auth");
 const { loginUser, rotateRefreshToken, getUserFromToken } = require("../services/authService");
 
 const router = express.Router();
 
-router.post("/login", async (req, res) => {
-	const validation = loginSchema.safeParse(req.body || {});
-	if (!validation.success) {
-		return res.status(400).json({
-			success: false,
-			message: validation.error.issues[0]?.message || "Invalid login payload.",
-		});
-	}
-
+router.post("/login", authRateLimiter, validateBody(loginSchema), async (req, res) => {
 	try {
-		const payload = await loginUser(validation.data);
+		const payload = await loginUser(req.body);
 		return res.json({ success: true, ...payload });
 	} catch (error) {
 		return res.status(error.statusCode || 500).json({
@@ -25,17 +19,9 @@ router.post("/login", async (req, res) => {
 	}
 });
 
-router.post("/refresh", (req, res) => {
-	const validation = refreshTokenSchema.safeParse(req.body || {});
-	if (!validation.success) {
-		return res.status(400).json({
-			success: false,
-			message: validation.error.issues[0]?.message || "Refresh token is required.",
-		});
-	}
-
+router.post("/refresh", validateBody(refreshTokenSchema), (req, res) => {
 	try {
-		const tokens = rotateRefreshToken(validation.data.refreshToken);
+		const tokens = rotateRefreshToken(req.body.refreshToken);
 		return res.json({ success: true, tokens });
 	} catch (error) {
 		return res.status(error.statusCode || 500).json({

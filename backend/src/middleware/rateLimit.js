@@ -1,8 +1,13 @@
-function createRateLimiter({ windowMs = 60_000, max = 40 } = {}) {
+function createRateLimiter({
+	windowMs = 60_000,
+	max = 40,
+	message = "Too many requests. Please slow down and try again shortly.",
+	keyGenerator = (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
+} = {}) {
 	const buckets = new Map();
 
 	return function rateLimiter(req, res, next) {
-		const key = req.ip || "unknown";
+		const key = keyGenerator(req);
 		const now = Date.now();
 		const bucket = buckets.get(key) || { count: 0, resetAt: now + windowMs };
 
@@ -21,7 +26,7 @@ function createRateLimiter({ windowMs = 60_000, max = 40 } = {}) {
 		if (bucket.count > max) {
 			return res.status(429).json({
 				success: false,
-				message: "Too many requests. Please slow down and try again shortly.",
+				message,
 			});
 		}
 
@@ -29,6 +34,13 @@ function createRateLimiter({ windowMs = 60_000, max = 40 } = {}) {
 	};
 }
 
+const authRateLimiter = createRateLimiter({
+	windowMs: 60_000,
+	max: process.env.AUTH_RATE_LIMIT_MAX ? Number(process.env.AUTH_RATE_LIMIT_MAX) : 5,
+	message: "Too many login attempts. Please wait a minute before trying again.",
+});
+
 module.exports = {
 	createRateLimiter,
+	authRateLimiter,
 };

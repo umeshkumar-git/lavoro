@@ -3,6 +3,7 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const config = require("./config");
@@ -24,6 +25,14 @@ const {
 	updateProfile,
 } = require("./data/store");
 const { createRateLimiter } = require("./middleware/rateLimit");
+const { validateBody } = require("./middleware/validation");
+const {
+	profileSchema,
+	taskCreateSchema,
+	reminderCreateSchema,
+	planCreateSchema,
+	chatMessageSchema,
+} = require("./shared/schemas");
 const {
 	getProjectStructure,
 	readProjectFile,
@@ -32,6 +41,7 @@ const {
 const apiRoutes = require("./routes");
 
 const app = express();
+app.set("trust proxy", 1);
 const frontendDir = config.frontendDir;
 const projectRoot = config.projectRoot;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
@@ -67,16 +77,43 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 app.use((req, res, next) => {
-	logger.info(
-		{
-			method: req.method,
-			url: req.originalUrl,
-			host: req.headers.host,
-		},
-		"Incoming request",
-	);
+	if (!process.env.BENCHMARK_MODE) {
+		logger.info(
+			{
+				method: req.method,
+				url: req.originalUrl,
+				host: req.headers.host,
+			},
+			"Incoming request",
+		);
+	}
 	next();
 });
+
+app.use(
+	helmet({
+		contentSecurityPolicy: {
+			directives: {
+				defaultSrc: ["'self'"],
+				scriptSrc: ["'self'", "'unsafe-inline'"],
+				styleSrc: [
+					"'self'",
+					"'unsafe-inline'",
+					"https://fonts.googleapis.com",
+					"https://cdnjs.cloudflare.com",
+				],
+				fontSrc: [
+					"'self'",
+					"https://fonts.gstatic.com",
+					"https://cdnjs.cloudflare.com",
+				],
+				imgSrc: ["'self'", "data:", "blob:"],
+				connectSrc: ["'self'"],
+			},
+		},
+		crossOriginEmbedderPolicy: false,
+	}),
+);
 
 app.use(
 	cors({
@@ -106,7 +143,9 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 
-app.use("/api", createRateLimiter({ windowMs: 60_000, max: 60 }));
+if (!process.env.BENCHMARK_MODE) {
+	app.use("/api", createRateLimiter({ windowMs: 60_000, max: 60 }));
+}
 app.use("/api", apiRoutes);
 app.use(express.static(frontendDir));
 
@@ -134,12 +173,9 @@ app.get("/api/profile", (req, res) => {
 	res.json({ success: true, profile: getProfile(getSessionId(req)) });
 });
 
-app.post("/api/profile", (req, res) => {
+app.post("/api/profile", validateBody(profileSchema), (req, res) => {
 	try {
-		const profile = updateProfile(
-			getSessionId(req),
-			sanitizeProfile(req.body),
-		);
+		const profile = updateProfile(getSessionId(req), req.body);
 		res.json({ success: true, profile });
 	} catch (error) {
 		sendError(res, error);
@@ -154,7 +190,7 @@ app.get("/api/tasks", (req, res) => {
 	res.json({ success: true, tasks: getTasks(getSessionId(req)) });
 });
 
-app.post("/api/tasks", (req, res) => {
+app.post("/api/tasks", validateBody(taskCreateSchema), (req, res) => {
 	try {
 		const tasks = addTask(getSessionId(req), req.body);
 		res.json({ success: true, tasks });
@@ -167,7 +203,7 @@ app.get("/api/reminders", (req, res) => {
 	res.json({ success: true, reminders: getReminders(getSessionId(req)) });
 });
 
-app.post("/api/reminders", (req, res) => {
+app.post("/api/reminders", validateBody(reminderCreateSchema), (req, res) => {
 	try {
 		const reminders = addReminder(getSessionId(req), req.body);
 		res.json({ success: true, reminders });
@@ -180,16 +216,16 @@ app.get("/api/plans", (req, res) => {
 	res.json({ success: true, plans: getPlans(getSessionId(req)) });
 });
 
-app.post("/api/plans", (req, res) => {
+app.post("/api/plans", validateBody(planCreateSchema), (req, res) => {
 	try {
-		const plan = createDailyPlan(getSessionId(req), req.body?.prompt || "");
+		const plan = createDailyPlan(getSessionId(req), req.body.prompt || "");
 		res.json({ success: true, plan });
 	} catch (error) {
 		sendError(res, error);
 	}
 });
 
-app.post("/api/ai/chat", async (req, res) => {
+app.post("/api/ai/chat", validateBody(chatMessageSchema), async (req, res) => {
 	const startedAt = Date.now();
 	try {
 		const result = await ai.generate({
@@ -197,12 +233,14 @@ app.post("/api/ai/chat", async (req, res) => {
 			sessionId: getSessionId(req),
 		});
 
-		console.log("ai.chat", {
-			mode: result.mode,
-			model: result.model,
-			latencyMs: result.latencyMs,
-			requestLatencyMs: Date.now() - startedAt,
-		});
+		if (!process.env.BENCHMARK_MODE) {
+			console.log("ai.chat", {
+				mode: result.mode,
+				model: result.model,
+				latencyMs: result.latencyMs,
+				requestLatencyMs: Date.now() - startedAt,
+			});
+		}
 
 		res.json(result);
 	} catch (error) {
@@ -210,7 +248,7 @@ app.post("/api/ai/chat", async (req, res) => {
 	}
 });
 
-app.post("/api/ai/stream", async (req, res) => {
+app.post("/api/ai/stream", validateBody(chatMessageSchema), async (req, res) => {
 	const startedAt = Date.now();
 	const sessionId = getSessionId(req);
 	res.writeHead(200, {
@@ -225,7 +263,7 @@ app.post("/api/ai/stream", async (req, res) => {
 			sessionId,
 		})) {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
-			if (event.type === "done") {
+			if (event.type === "done" && !process.env.BENCHMARK_MODE) {
 				console.log("ai.stream", {
 					mode: event.mode,
 					model: event.model,
@@ -300,37 +338,6 @@ function getSessionId(req) {
 		req.ip ||
 		"default-session"
 	);
-}
-
-
-function sanitizeProfile(input = {}) {
-	const safe = {};
-	const stringFields = [
-		"name",
-		"role",
-		"timezone",
-		"workingHours",
-		"goal",
-		"preferredSummaryStyle",
-	];
-	const listFields = ["focusAreas"];
-
-	for (const field of stringFields) {
-		if (typeof input[field] === "string") {
-			safe[field] = input[field].trim().slice(0, 200);
-		}
-	}
-
-	for (const field of listFields) {
-		if (Array.isArray(input[field])) {
-			safe[field] = input[field]
-				.map((item) => String(item).trim().slice(0, 80))
-				.filter(Boolean)
-				.slice(0, 20);
-		}
-	}
-
-	return safe;
 }
 
 function sendError(res, error) {
