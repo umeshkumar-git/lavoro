@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "node server.js",
 		"start": "node server.js",
+		"migrate": "node src/db/migrate.js",
 		"health": "node -e \"fetch('http://localhost:' + (process.env.PORT || 10000) + '/api/health').then(r => r.json()).then(console.log)\""
 	},
 	"keywords": [],
@@ -20,6 +21,7 @@
 		"@opentelemetry/semantic-conventions": "^1.30.0",
 		"@sentry/node": "^9.37.0",
 		"bcrypt": "^6.0.0",
+		"better-sqlite3": "^13.0.3",
 		"cors": "^2.8.6",
 		"dotenv": "^17.4.0",
 		"express": "^5.2.1",

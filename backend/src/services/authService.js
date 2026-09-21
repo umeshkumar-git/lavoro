@@ -1,21 +1,12 @@
+const { randomUUID } = require("node:crypto");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
+const { getDb } = require("../db");
 const { findByEmail, findById } = require("../repositories/userRepository");
 
 /**
- * ARCHITECTURAL LIMITATION & SECURITY WARNING:
- * Refresh tokens currently live in an in-memory Map (`refreshTokens`).
- *
- * Known limitations:
- * 1. Volatility: Tokens vanish upon server restart or process crash.
- * 2. Horizontal Scaling: Does not work across multiple server instances or cluster nodes
- *    because state is not shared between processes.
- *
- * Intended Scope:
- * Intentionally kept as single-instance in-memory for Phase 0 local development.
- * For Phase 3 production deployments, this store MUST be migrated to a distributed persistence
- * layer (e.g. Redis with TTL / PostgreSQL session store) with support for token revocation lists.
+ * In-memory fallback map used only when DATABASE_URL is unset.
  */
 const refreshTokens = new Map();
 
@@ -30,7 +21,7 @@ function generateTokenPair(user) {
 		expiresIn: config.jwt.accessTtl,
 	});
 	const refreshToken = jwt.sign(
-		{ ...payload, type: "refresh" },
+		{ ...payload, type: "refresh", jti: randomUUID() },
 		config.jwt.secret,
 		{ expiresIn: config.jwt.refreshTtl },
 	);
@@ -70,10 +61,19 @@ async function loginUser({ email, password }) {
 	}
 
 	const tokens = generateTokenPair(user);
-	refreshTokens.set(tokens.refreshToken, {
-		userId: user.id,
-		issuedAt: Date.now(),
-	});
+	const db = getDb();
+
+	if (db) {
+		db.prepare(`
+			INSERT OR REPLACE INTO refresh_tokens (token, user_id, issued_at, expires_at)
+			VALUES (?, ?, ?, ?)
+		`).run(tokens.refreshToken, user.id, Date.now(), null);
+	} else {
+		refreshTokens.set(tokens.refreshToken, {
+			userId: user.id,
+			issuedAt: Date.now(),
+		});
+	}
 
 	return {
 		user: {
@@ -94,8 +94,24 @@ function rotateRefreshToken(refreshToken) {
 		});
 	}
 
-	const storedToken = refreshTokens.get(refreshToken);
-	if (!storedToken || storedToken.userId !== payload.sub) {
+	const db = getDb();
+	let tokenValid = false;
+
+	if (db) {
+		const row = db
+			.prepare("SELECT * FROM refresh_tokens WHERE token = ?")
+			.get(refreshToken);
+		if (row && row.user_id === payload.sub) {
+			tokenValid = true;
+		}
+	} else {
+		const storedToken = refreshTokens.get(refreshToken);
+		if (storedToken && storedToken.userId === payload.sub) {
+			tokenValid = true;
+		}
+	}
+
+	if (!tokenValid) {
 		throw Object.assign(new Error("Refresh token is not recognized."), {
 			statusCode: 401,
 		});
@@ -109,11 +125,23 @@ function rotateRefreshToken(refreshToken) {
 	}
 
 	const nextPair = generateTokenPair(user);
-	refreshTokens.delete(refreshToken);
-	refreshTokens.set(nextPair.refreshToken, {
-		userId: user.id,
-		issuedAt: Date.now(),
-	});
+
+	if (db) {
+		const rotateTx = db.transaction(() => {
+			db.prepare("DELETE FROM refresh_tokens WHERE token = ?").run(refreshToken);
+			db.prepare(`
+				INSERT INTO refresh_tokens (token, user_id, issued_at, expires_at)
+				VALUES (?, ?, ?, ?)
+			`).run(nextPair.refreshToken, user.id, Date.now(), null);
+		});
+		rotateTx();
+	} else {
+		refreshTokens.delete(refreshToken);
+		refreshTokens.set(nextPair.refreshToken, {
+			userId: user.id,
+			issuedAt: Date.now(),
+		});
+	}
 
 	return nextPair;
 }
@@ -123,7 +151,16 @@ function getUserFromToken(token) {
 	return findById(payload.sub);
 }
 
+function clearRefreshTokens() {
+	const db = getDb();
+	if (db) {
+		db.prepare("DELETE FROM refresh_tokens").run();
+	}
+	refreshTokens.clear();
+}
+
 module.exports = {
+	clearRefreshTokens,
 	getUserFromToken,
 	loginUser,
 	refreshTokens,

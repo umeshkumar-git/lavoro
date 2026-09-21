@@ -7,6 +7,16 @@ node_modules/
 .env.*
 !.env.example
 
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
 # Build / Distribution outputs
 dist/
 build/

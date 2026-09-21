@@ -36,7 +36,8 @@ Lavoro is an intelligent, full-stack AI productivity platform that combines conv
 
 Lavoro is structured around a decoupled, modular Express 5 backend that serves both an API and a high-performance static frontend shell:
 
-- **AI Orchestration**: Built-in multi-mode orchestrator supporting streaming responses (SSE) with Gemini 3 Flash / Flash Lite and resilient fallbacks.
+- **AI Orchestration**: Built-in multi-mode orchestrator supporting streaming responses (SSE) with Gemini 3 Flash / Flash Lite, native function calling, and resilient fallbacks.
+- **Persistence Layer**: Embedded SQLite database via `better-sqlite3` with WAL mode, automated SQL migrations, restart survival, and honest in-memory fallback.
 - **Security & RBAC**: Stateless JWT access tokens with refresh token rotation and bcrypt-hashed credentials.
 - **Performance Caching**: Tiered in-memory / Redis cache for fast metric and dashboard aggregation.
 - **Observability**: Distributed tracing via OpenTelemetry, real-time error capture via Sentry, and high-throughput structured logging with Pino.
@@ -57,9 +58,10 @@ lavoro/
 │       ├── ai/
 │       │   ├── context.js      # Context window builder & session summarization
 │       │   ├── modes.js        # Productivity modes (assistant, briefing, planner, tasks, email, summary)
-│       │   ├── orchestrator.js # Orchestration between primary LLM and demo fallback
+│       │   ├── orchestrator.js # Iterative function-calling agent loop
 │       │   ├── prompts.js      # System prompt templates
-│       │   └── providers.js    # Gemini SDK provider & mock DemoProvider
+│       │   ├── providers.js    # Gemini SDK provider & mock DemoProvider
+│       │   └── tools.js        # Gemini function-calling JSON schemas & tool execution
 │       ├── cache/
 │       │   └── redisCache.js   # Cache interface with TTL support
 │       ├── config/
@@ -67,12 +69,16 @@ lavoro/
 │       │   ├── logger.js       # Pino structured logger
 │       │   └── telemetry.js    # OpenTelemetry SDK and Sentry initialization
 │       ├── data/
-│       │   └── store.js        # In-memory storage for tasks, plans, reminders, chats
+│       │   └── store.js        # Session store with SQLite persistence & memory fallback
+│       ├── db/
+│       │   ├── index.js        # SQLite connection manager with WAL mode
+│       │   ├── migrate.js      # Automated migration runner
+│       │   └── migrations/     # Versioned SQL migrations (001 - 004)
 │       ├── middleware/
 │       │   ├── auth.js         # Bearer JWT verification & role authorization
 │       │   └── rateLimit.js    # Sliding window rate limiter
 │       ├── repositories/
-│       │   └── userRepository.js # User store with bcrypt password hashing
+│       │   └── userRepository.js # User store with SQLite persistence & bcrypt hashing
 │       ├── routes/
 │       │   ├── aiRoutes.js          # AI daily summary and mode endpoints
 │       │   ├── authRoutes.js        # Login, refresh token rotation, and /me
@@ -83,7 +89,9 @@ lavoro/
 │       │   └── ragRoutes.js         # Knowledge base document indexing and search
 │       ├── services/
 │       │   ├── authService.js      # Authentication, token pairs, and session lifecycle
-│       │   └── dashboardService.js # Metric calculations and cache coordination
+│       │   ├── dashboardService.js # Metric calculations and cache coordination
+│       │   ├── jobQueueService.js  # Async background job queue with SQLite persistence
+│       │   └── ragService.js       # RAG embeddings and retrieval with SQLite persistence
 │       ├── shared/
 │       │   ├── constants.js    # User roles and system constants
 │       │   └── schemas.js      # Zod validation schemas
@@ -94,8 +102,10 @@ lavoro/
 │   ├── script.js               # Frontend controller, state management, SSE handling
 │   └── style.css               # Modern styling, animations, and dark theme
 ├── scripts/
+│   ├── eval-agent.js           # 18-prompt deterministic agent evaluation benchmark
 │   └── seed.js                 # Standalone demo seeding script
 ├── tests/
+│   ├── persistence.test.js     # SQLite persistence, restart survival, & fallback tests
 │   └── smoke.test.js           # In-process integration tests with Supertest
 └── .github/
     └── workflows/

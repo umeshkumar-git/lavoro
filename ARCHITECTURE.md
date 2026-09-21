@@ -123,3 +123,41 @@ Lavoro includes a deterministic evaluation benchmark suite in `scripts/eval-agen
   ```bash
   npm run eval
   ```
+
+---
+
+## 5. Persistence Layer & Migrations
+
+To support live production demos without requiring external database servers or complex cloud infrastructure, Lavoro implements an embedded SQLite persistence layer via `better-sqlite3`:
+
+```
+                           DATABASE_URL
+                                │
+                 ┌──────────────┴──────────────┐
+                 ▼                             ▼
+        [DATABASE_URL Set]           [DATABASE_URL Unset]
+                 │                             │
+                 ▼                             ▼
+       SQLite (better-sqlite3)         Ephemeral In-Memory
+         - WAL journal mode            - Explicit warning logged
+         - Foreign keys enabled        - Volatile Maps & Arrays
+         - Auto-applied migrations     - Fast isolated dev
+```
+
+### Database Schema & Migrations
+Database tables are provisioned via sequential, versioned SQL migrations in `backend/src/db/migrations/`:
+1. `001_create_users_and_auth.sql`: `users` (bcrypt-hashed credentials) and `refresh_tokens` (with atomic rotation and revocation).
+2. `002_create_sessions_tasks_reminders.sql`: `sessions`, `tasks`, `reminders`, `plans`, `messages` (chat history), and `memories`.
+3. `003_create_rag_documents.sql`: `rag_documents` (content, metadata, and 8-dimensional vector embeddings).
+4. `004_create_jobs.sql`: `jobs` (asynchronous background queue states and worker output payloads).
+
+Migrations are tracked in the `_migrations` table and run automatically upon database connection or via the standalone CLI command:
+```bash
+npm run migrate
+```
+
+### Restart Survival & Honesty Principle
+- When `DATABASE_URL` is provided (e.g. `sqlite://./data/lavoro.db`), all user entities, workspace tasks, reminders, daily plans, chat history, and background jobs persist across server reboots.
+- If `DATABASE_URL` is omitted, Lavoro transparently falls back to in-memory mode and explicitly logs:
+  `⚠️  DATABASE_URL is not set — falling back to ephemeral in-memory storage (data will vanish on restart). Set DATABASE_URL to enable real persistence (e.g., sqlite://./data/lavoro.db).`
+

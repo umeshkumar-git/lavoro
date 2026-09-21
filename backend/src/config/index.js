@@ -27,6 +27,10 @@ const config = {
 	redis: {
 		url: process.env.REDIS_URL || "redis://localhost:6379",
 	},
+	db: {
+		url: process.env.DATABASE_URL || "",
+		path: process.env.SQLITE_PATH || "",
+	},
 	allowedOrigins: new Set([
 		"https://lavoro.umeshshah.in",
 		"https://umeshshah.in",

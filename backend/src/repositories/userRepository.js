@@ -1,16 +1,17 @@
 const bcrypt = require("bcrypt");
 const { USER_ROLES } = require("../shared/constants");
+const { getDb } = require("../db");
 
 const SALT_ROUNDS = 10;
 
 /**
- * In-memory user store.
- * NOTE: For local-dev/Phase 0 scope. Passwords must never be stored in plaintext.
+ * In-memory fallback map used only when DATABASE_URL is unset.
  */
 const users = new Map();
 
 /**
  * Creates and stores a new user with a bcrypt-hashed password.
+ * Persists to SQLite if configured, otherwise falls back to memory.
  * @param {Object} params
  * @param {string} [params.id]
  * @param {string} params.email
@@ -36,6 +37,22 @@ async function createUser({ id, email, password, name, role }) {
 		createdAt: new Date().toISOString(),
 	};
 
+	const db = getDb();
+	if (db) {
+		db.prepare(`
+			INSERT INTO users (id, email, password, name, role, created_at, updated_at)
+			VALUES (@id, @email, @password, @name, @role, @createdAt, @createdAt)
+		`).run({
+			id: user.id,
+			email: user.email,
+			password: user.password,
+			name: user.name,
+			role: user.role,
+			createdAt: user.createdAt,
+		});
+		return user;
+	}
+
 	users.set(normalizedEmail, user);
 	return user;
 }
@@ -47,6 +64,26 @@ async function createUser({ id, email, password, name, role }) {
  */
 function findByEmail(email) {
 	const normalizedEmail = String(email || "").trim().toLowerCase();
+	if (!normalizedEmail) return null;
+
+	const db = getDb();
+	if (db) {
+		const row = db
+			.prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)")
+			.get(normalizedEmail);
+		if (!row) return null;
+
+		return {
+			id: row.id,
+			email: row.email,
+			password: row.password,
+			name: row.name || "",
+			role: row.role,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		};
+	}
+
 	return users.get(normalizedEmail) || null;
 }
 
@@ -56,6 +93,24 @@ function findByEmail(email) {
  * @returns {Object|null}
  */
 function findById(id) {
+	if (!id) return null;
+
+	const db = getDb();
+	if (db) {
+		const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+		if (!row) return null;
+
+		return {
+			id: row.id,
+			email: row.email,
+			password: row.password,
+			name: row.name || "",
+			role: row.role,
+			createdAt: row.created_at,
+			updatedAt: row.updated_at,
+		};
+	}
+
 	for (const user of users.values()) {
 		if (user.id === id) return user;
 	}
@@ -66,6 +121,10 @@ function findById(id) {
  * Clears all users (useful for test resets).
  */
 function clearUsers() {
+	const db = getDb();
+	if (db) {
+		db.prepare("DELETE FROM users").run();
+	}
 	users.clear();
 }
 
