@@ -188,7 +188,7 @@ async function executeTool(name, args = {}, context = {}) {
 			case "queryDocuments": {
 				const query = String(args.query || "").trim();
 				if (!query) throw new Error("Query is required.");
-				const results = queryDocuments(query, Number(args.limit) || 5);
+				const results = await queryDocuments(query, Number(args.limit) || 5);
 				return {
 					success: true,
 					tool: name,

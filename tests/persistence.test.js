@@ -248,7 +248,7 @@ test("refresh tokens are stored in SQLite and support atomic rotation", async ()
 	);
 });
 
-test("RAG documents are persisted and queried from SQLite", () => {
+test("RAG documents are persisted and queried from SQLite", async () => {
 	clearDocuments();
 
 	const docs = [
@@ -266,7 +266,7 @@ test("RAG documents are persisted and queried from SQLite", () => {
 		},
 	];
 
-	indexDocuments(docs);
+	await indexDocuments(docs);
 
 	const db = getDb();
 	const count = db
@@ -274,10 +274,45 @@ test("RAG documents are persisted and queried from SQLite", () => {
 		.get().count;
 	assert.equal(count, 2, "2 documents should be in rag_documents table");
 
-	const results = queryDocuments("Tell me about SQLite persistence and WAL mode", 2);
+	const results = await queryDocuments("Tell me about SQLite persistence and WAL mode", 2);
 	assert.ok(results.length > 0, "should return matching document");
 	assert.equal(results[0].id, "doc-arch");
 	assert.ok(results[0].score > 0, "score should be positive");
+});
+
+test("long documents are chunked with overlapping windows and metadata", async () => {
+	clearDocuments();
+
+	const longContent = [
+		"First Section: Architecture overview of the Lavoro personal productivity assistant. The application structures its modules cleanly into separate domains.",
+		"Second Section: Data persistence uses SQLite with Write-Ahead Logging to guarantee transaction isolation and immediate disk durability without background servers.",
+		"Third Section: Retrieval Augmented Generation uses neural embeddings to index workspace notes and project documents for high-accuracy semantic search.",
+		"Fourth Section: The background job queue handles asynchronous executive report generation and email triage summaries without blocking the main event loop.",
+		"Fifth Section: Security enforcement validates role-based access control, stateless JWT access tokens, and atomic refresh token rotation.",
+	].join("\n\n");
+
+	const indexed = await indexDocuments([
+		{
+			id: "doc-large-manual",
+			content: longContent,
+			metadata: { topic: "engineering-handbook" },
+		},
+	]);
+
+	assert.ok(
+		indexed.length >= 2,
+		`document exceeding 500 chars should produce multiple chunks (got ${indexed.length})`,
+	);
+	assert.ok(
+		indexed[0].id.includes("#chunk-0"),
+		"chunk ID should include chunk index",
+	);
+	assert.equal(indexed[0].metadata.parentDocId, "doc-large-manual");
+	assert.equal(indexed[0].metadata.topic, "engineering-handbook");
+
+	const hits = await queryDocuments("Write-Ahead Logging SQLite durability", 1);
+	assert.ok(hits.length > 0);
+	assert.ok(hits[0].content.includes("Write-Ahead Logging"));
 });
 
 test("background jobs persist status and completed results in SQLite", async () => {
@@ -324,11 +359,11 @@ test("in-memory fallback path functions properly when DATABASE_URL is unset", as
 	const taskList = addTask("mem-session", { title: "In-memory task" });
 	assert.ok(taskList.some((t) => t.title === "In-memory task"));
 
-	const indexed = indexDocuments([
+	const indexed = await indexDocuments([
 		{ id: "mem-doc-1", content: "In-memory document test" },
 	]);
 	assert.equal(indexed.length, 1);
-	const ragHits = queryDocuments("In-memory document test");
+	const ragHits = await queryDocuments("In-memory document test");
 	assert.ok(ragHits.length > 0);
 
 	const job = enqueueJob("mem-job", { test: true });

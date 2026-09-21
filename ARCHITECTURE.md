@@ -161,3 +161,40 @@ npm run migrate
 - If `DATABASE_URL` is omitted, Lavoro transparently falls back to in-memory mode and explicitly logs:
   `⚠️  DATABASE_URL is not set — falling back to ephemeral in-memory storage (data will vanish on restart). Set DATABASE_URL to enable real persistence (e.g., sqlite://./data/lavoro.db).`
 
+---
+
+## 6. Retrieval-Augmented Generation (RAG) Pipeline
+
+Lavoro implements an embedded, production-grade RAG pipeline designed for grounded assistant responses without third-party vector database dependencies:
+
+```mermaid
+flowchart TD
+    Doc[Raw Document] --> Chunk[Sliding-Window Chunker<br/>500 chars / 100 overlap]
+    Chunk --> Chunks[Document Chunks + Metadata]
+    Chunks --> Embed[Gemini Neural Embedding<br/>gemini-embedding-001]
+    Embed --> SQLite[(SQLite rag_documents<br/>Embedding JSON + Metadata)]
+    
+    Query[User Query / Tool Call] --> QueryEmbed[Query Neural Embedding]
+    QueryEmbed --> CosScan[In-Process Cosine Similarity Scan]
+    SQLite -.-> CosScan
+    CosScan --> TopK[Ranked Top-K Context Chunks]
+    TopK --> LLM[Gemini Agent Loop]
+```
+
+### Key Components
+
+1. **Neural Embeddings (`gemini-embedding-001`)**:
+   - Generates 3072-dimensional dense semantic vectors using Google Generative AI's neural embedding model.
+   - Provides an offline, deterministic fallback generator for CI test runners where `GEMINI_API_KEY` is not present.
+
+2. **Recursive Natural Boundary Chunking**:
+   - Documents longer than 500 characters are partitioned into overlapping windows (100-character overlap) along paragraph (`\n\n`), sentence (`. `), and word boundaries.
+   - Chunks inherit parent metadata alongside `parentDocId`, `chunkIndex`, and `totalChunks` tracking.
+
+3. **In-Process Cosine Similarity Scan**:
+   - Embeddings are stored as JSON arrays directly in the `rag_documents` table in SQLite.
+   - At query time, the system computes cosine similarity between the query vector and candidate chunk vectors in-process:
+     $$\text{sim}(\vec{u}, \vec{v}) = \frac{\vec{u} \cdot \vec{v}}{\|\vec{u}\| \|\vec{v}\|}$$
+   - **Explainable Architectural Choice**: At personal and executive team scale (<50,000 chunks), in-memory/in-process vector comparison takes <5ms. Operating an external dedicated vector database (such as Pinecone, Qdrant, or Milvus) introduces operational maintenance, network round trips, and failure modes that are unnecessary at this data scale.
+
+

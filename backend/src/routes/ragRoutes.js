@@ -3,10 +3,10 @@ const { indexDocuments, queryDocuments } = require("../services/ragService");
 
 const router = express.Router();
 
-router.post("/index", (req, res) => {
+router.post("/index", async (req, res) => {
 	try {
 		const documents = Array.isArray(req.body?.documents) ? req.body.documents : [];
-		const indexed = indexDocuments(documents);
+		const indexed = await indexDocuments(documents);
 		return res.json({
 			success: true,
 			indexed: indexed.length,
@@ -20,7 +20,7 @@ router.post("/index", (req, res) => {
 	}
 });
 
-router.post("/query", (req, res) => {
+router.post("/query", async (req, res) => {
 	try {
 		const query = String(req.body?.query || "").trim();
 		if (!query) {
@@ -30,9 +30,10 @@ router.post("/query", (req, res) => {
 			});
 		}
 
+		const results = await queryDocuments(query, Number(req.body?.limit || 5));
 		return res.json({
 			success: true,
-			results: queryDocuments(query, Number(req.body?.limit || 5)),
+			results,
 		});
 	} catch (error) {
 		return res.status(500).json({
