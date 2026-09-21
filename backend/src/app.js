@@ -24,6 +24,7 @@ const {
 	resetSession,
 	updateProfile,
 } = require("./data/store");
+const db = require("./db");
 const { createRateLimiter } = require("./middleware/rateLimit");
 const { validateBody } = require("./middleware/validation");
 const {
@@ -198,7 +199,7 @@ app.get("/api/health", (req, res) => {
 		service: "Lavoro: Personal Daily Assistant",
 		frontend: "vanilla-html-css-js",
 		backend: "express",
-		database: "in-memory",
+		database: db.isConfigured() ? "sqlite" : "in-memory",
 		auth: "jwt-rotation",
 		model: primaryProvider.isConfigured() ? GEMINI_MODEL : "demo",
 		modelFallbacks: primaryProvider.isConfigured()
