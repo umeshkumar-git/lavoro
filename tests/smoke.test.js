@@ -1,13 +1,18 @@
-const test = require("node:test");
+const { test, before } = require("node:test");
 const assert = require("node:assert/strict");
+const request = require("supertest");
+const app = require("../backend/src/app");
+const { seedUsers, DEV_SEED_PASSWORD } = require("../scripts/seed");
 
-const APP_URL = process.env.APP_URL || "http://127.0.0.1:10000";
+before(async () => {
+	await seedUsers();
+});
 
 test("health endpoint is available and reports healthy status", async () => {
-	const response = await fetch(`${APP_URL}/api/health`);
+	const response = await request(app).get("/api/health");
 	assert.equal(response.status, 200, "health endpoint should return 200");
 
-	const payload = await response.json();
+	const payload = response.body;
 	assert.equal(payload.status, "healthy", "status should be healthy");
 	assert.equal(
 		payload.service,
@@ -22,10 +27,10 @@ test("health endpoint is available and reports healthy status", async () => {
 });
 
 test("homepage serves the app shell with the premium dashboard HTML", async () => {
-	const response = await fetch(APP_URL);
+	const response = await request(app).get("/");
 	assert.equal(response.status, 200, "homepage should return 200");
 
-	const html = await response.text();
+	const html = response.text;
 	assert.match(
 		html,
 		/Lavoro: Personal Daily Assistant/,
@@ -40,14 +45,14 @@ test("homepage serves the app shell with the premium dashboard HTML", async () =
 });
 
 test("dashboard summary is served through the cache-friendly metrics endpoint", async () => {
-	const response = await fetch(`${APP_URL}/api/dashboard/summary`);
+	const response = await request(app).get("/api/dashboard/summary");
 	assert.equal(
 		response.status,
 		200,
 		"dashboard summary should be accessible",
 	);
 
-	const payload = await response.json();
+	const payload = response.body;
 	assert.equal(payload.success, true, "dashboard summary should succeed");
 	assert.ok(payload.metrics, "dashboard summary should have metrics");
 	assert.equal(
@@ -58,17 +63,15 @@ test("dashboard summary is served through the cache-friendly metrics endpoint", 
 });
 
 test("login returns JWT tokens and protected routes require authentication", async () => {
-	const loginResponse = await fetch(`${APP_URL}/api/auth/login`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
+	const loginResponse = await request(app)
+		.post("/api/auth/login")
+		.send({
 			email: "admin@example.com",
-			password: "Password123!",
-		}),
-	});
+			password: DEV_SEED_PASSWORD,
+		});
 	assert.equal(loginResponse.status, 200, "login should succeed");
 
-	const loginPayload = await loginResponse.json();
+	const loginPayload = loginResponse.body;
 	assert.ok(
 		loginPayload.tokens?.accessToken,
 		"access token should be present",
@@ -78,16 +81,16 @@ test("login returns JWT tokens and protected routes require authentication", asy
 		"refresh token should be present",
 	);
 
-	const protectedResponse = await fetch(`${APP_URL}/api/auth/me`, {
-		headers: { Authorization: `Bearer ${loginPayload.tokens.accessToken}` },
-	});
+	const protectedResponse = await request(app)
+		.get("/api/auth/me")
+		.set("Authorization", `Bearer ${loginPayload.tokens.accessToken}`);
 	assert.equal(
 		protectedResponse.status,
 		200,
 		"me endpoint should authorize the token",
 	);
 
-	const unauthenticatedResponse = await fetch(`${APP_URL}/api/auth/me`);
+	const unauthenticatedResponse = await request(app).get("/api/auth/me");
 	assert.equal(
 		unauthenticatedResponse.status,
 		401,
@@ -96,26 +99,23 @@ test("login returns JWT tokens and protected routes require authentication", asy
 });
 
 test("background queue endpoint accepts async jobs with a job identifier", async () => {
-	const response = await fetch(`${APP_URL}/api/jobs`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
+	const response = await request(app)
+		.post("/api/jobs")
+		.send({
 			type: "daily-summary",
 			payload: { userId: "demo-user" },
-		}),
-	});
+		});
 	assert.equal(response.status, 202, "job request should be accepted");
 
-	const payload = await response.json();
+	const payload = response.body;
 	assert.ok(payload.jobId, "job ID should be returned");
 	assert.equal(payload.status, "queued", "job should start in queued state");
 });
 
 test("daily executive summary generates a summary and productivity score", async () => {
-	const response = await fetch(`${APP_URL}/api/ai/daily-summary`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
+	const response = await request(app)
+		.post("/api/ai/daily-summary")
+		.send({
 			tasks: [
 				{ title: "Ship backend auth", status: "done" },
 				{ title: "Refine dashboard metrics", status: "in-progress" },
@@ -125,11 +125,10 @@ test("daily executive summary generates a summary and productivity score", async
 				"Need follow-up for access tokens.",
 			],
 			goals: ["Ship auth", "Review metric caching"],
-		}),
-	});
+		});
 	assert.equal(response.status, 200, "summary endpoint should return 200");
 
-	const payload = await response.json();
+	const payload = response.body;
 	assert.ok(payload.summary, "summary text should be present");
 	assert.ok(
 		typeof payload.productivityScore === "number",
@@ -142,10 +141,9 @@ test("daily executive summary generates a summary and productivity score", async
 });
 
 test("RAG query can index and retrieve relevant historical context", async () => {
-	const indexResponse = await fetch(`${APP_URL}/api/rag/index`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
+	const indexResponse = await request(app)
+		.post("/api/rag/index")
+		.send({
 			documents: [
 				{
 					id: "doc-1",
@@ -158,20 +156,17 @@ test("RAG query can index and retrieve relevant historical context", async () =>
 						"Weekly retrospective notes mention reducing time to ship by improving team coordination.",
 				},
 			],
-		}),
-	});
+		});
 	assert.equal(indexResponse.status, 200, "rag index request should succeed");
 
-	const queryResponse = await fetch(`${APP_URL}/api/rag/query`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
+	const queryResponse = await request(app)
+		.post("/api/rag/query")
+		.send({
 			query: "What does the launch plan mention about auth and dashboards?",
-		}),
-	});
+		});
 	assert.equal(queryResponse.status, 200, "rag query should succeed");
 
-	const payload = await queryResponse.json();
+	const payload = queryResponse.body;
 	assert.ok(Array.isArray(payload.results), "results should be an array");
 	assert.ok(
 		payload.results.length > 0,
@@ -180,37 +175,32 @@ test("RAG query can index and retrieve relevant historical context", async () =>
 });
 
 test("third-party integration endpoints expose supported connectors and webhook handling", async () => {
-	const connectorsResponse = await fetch(
-		`${APP_URL}/api/integrations/connectors`,
+	const connectorsResponse = await request(app).get(
+		"/api/integrations/connectors",
 	);
 	assert.equal(
 		connectorsResponse.status,
 		200,
 		"connectors route should succeed",
 	);
-	const connectorsPayload = await connectorsResponse.json();
+	const connectorsPayload = connectorsResponse.body;
 	assert.ok(
 		Array.isArray(connectorsPayload.connectors),
 		"connector list should be available",
 	);
 
-	const webhookResponse = await fetch(
-		`${APP_URL}/api/integrations/webhooks/slack`,
-		{
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				type: "event_callback",
-				text: "summary ready",
-			}),
-		},
-	);
+	const webhookResponse = await request(app)
+		.post("/api/integrations/webhooks/slack")
+		.send({
+			type: "event_callback",
+			text: "summary ready",
+		});
 	assert.equal(
 		webhookResponse.status,
 		200,
 		"webhook route should accept events",
 	);
-	const webhookPayload = await webhookResponse.json();
+	const webhookPayload = webhookResponse.body;
 	assert.equal(
 		webhookPayload.success,
 		true,

@@ -5,7 +5,7 @@ const { loginUser, rotateRefreshToken, getUserFromToken } = require("../services
 
 const router = express.Router();
 
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
 	const validation = loginSchema.safeParse(req.body || {});
 	if (!validation.success) {
 		return res.status(400).json({
@@ -15,7 +15,7 @@ router.post("/login", (req, res) => {
 	}
 
 	try {
-		const payload = loginUser(validation.data);
+		const payload = await loginUser(validation.data);
 		return res.json({ success: true, ...payload });
 	} catch (error) {
 		return res.status(error.statusCode || 500).json({

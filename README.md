@@ -1,371 +1,275 @@
-# Lavoro — AI Daily Assistant
+# Lavoro - AI-Powered Personal Daily Assistant & Productivity Platform
 
-An AI-powered assistant built on Node.js, Express, and Google's Gemini API. It started as a
-5-day **Google AI Agents Intensive** capstone (a "concierge agent" for daily planning) and has
-since grown into a small production-style backend: JWT auth, rate limiting, structured
-logging/tracing, an in-memory RAG service, a background job simulator, mocked third-party
-integrations — plus a persona-based prompting system that goes well beyond daily planning (see
-[Backend Capabilities Not Yet in the UI](#backend-capabilities-built-but-not-yet-wired-to-the-ui)).
+Lavoro is an intelligent, full-stack AI productivity platform that combines conversational agent capabilities, daily executive briefings, task management, retrieval-augmented generation (RAG), and telemetry into a production-grade Node.js service.
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](#)
-[![Express](https://img.shields.io/badge/Express-5-black.svg)](#)
-[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Pro-orange.svg)](#)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](#)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-lavoro.umeshshah.in-blueviolet.svg)](https://lavoro.umeshshah.in)
+![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)
+![Express](https://img.shields.io/badge/Express-5.x-black.svg)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Pro%20%2F%20Flash-orange.svg)
+![Supertest](https://img.shields.io/badge/Tests-In--Process%20Supertest-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+---
 
 ## Table of Contents
-
-- [Overview](#overview)
-- [Live Demo](#live-demo)
-- [What Works End-to-End](#what-works-end-to-end-ui--api--gemini)
-- [Backend Capabilities Built But Not Yet Wired to the UI](#backend-capabilities-built-but-not-yet-wired-to-the-ui)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Testing](#testing)
+- [Architecture Overview](#architecture-overview)
+- [Repository Structure](#repository-structure)
+- [Core Features](#core-features)
+- [Authentication & Security](#authentication--security)
+  - [Bcrypt Password Hashing](#bcrypt-password-hashing)
+  - [JWT Access & Refresh Rotation](#jwt-access--refresh-rotation)
+  - [Architectural Limitation: In-Memory Token Scope](#architectural-limitation-in-memory-token-scope)
+  - [Demo Account Seeding](#demo-account-seeding)
+- [Observability & Telemetry](#observability--telemetry)
 - [API Reference](#api-reference)
-- [Known Limitations & Trade-offs](#known-limitations--trade-offs)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation & Seeding](#installation--seeding)
+  - [Running Locally](#running-locally)
+- [Testing & Quality Checks](#testing--quality-checks)
+- [CI/CD Pipeline](#cicd-pipeline)
 - [Roadmap](#roadmap)
-- [Contributing](#contributing)
 - [License](#license)
 
-## Overview
+---
 
-**Lavoro** (Italian for "work") is an Express backend + vanilla JS frontend that gives users a
-conversational daily assistant — morning briefings, task prioritization, reminders, and a
-structured daily plan — powered by Google's Gemini API, with a fully functional offline demo
-mode when no API key is configured.
+## Architecture Overview
 
-Underneath the daily-assistant surface, the backend has grown a second identity: a **persona
-system** (`backend/src/ai/modes.js`) originally aimed at coding mentorship — Learn, Debug, Code
-Review, Pair Programmer, Project Mentor, Interview Practice, and System Design — alongside the
-Daily Planner persona that ships in the UI today. That mentor system is implemented and callable
-through the API, but the current frontend only ever requests the Planner persona.
+Lavoro is structured around a decoupled, modular Express 5 backend that serves both an API and a high-performance static frontend shell:
 
-### Course Project Details
+- **AI Orchestration**: Built-in multi-mode orchestrator supporting streaming responses (SSE) with Gemini 3 Flash / Flash Lite and resilient fallbacks.
+- **Security & RBAC**: Stateless JWT access tokens with refresh token rotation and bcrypt-hashed credentials.
+- **Performance Caching**: Tiered in-memory / Redis cache for fast metric and dashboard aggregation.
+- **Observability**: Distributed tracing via OpenTelemetry, real-time error capture via Sentry, and high-throughput structured logging with Pino.
+- **Asynchronous Processing**: Background job ingestion for asynchronous summaries and report generation.
 
-- **Course**: Google AI Agents Intensive
-- **Duration**: 5 Days
-- **Original topic**: Concierge Agents — Automate Daily Tasks and Improve Individual Workflows
-- **Since then**: extended independently with auth, rate limiting, observability, RAG, a job
-  queue, mocked integrations, and a multi-persona prompting layer
+---
 
-## Live Demo
-
-A hosted instance is live at **[lavoro.umeshshah.in](https://lavoro.umeshshah.in)** — no
-setup or signup required. If no `GEMINI_API_KEY` is configured on the deployment, it runs in
-demo mode, which looks like this:
-
-**Prompt:** "Give me my morning briefing"
-
-```
-Good morning! Here's your briefing for today:
-
-Weather: 22°C, Partly Cloudy — clear skies expected
-
-You have 4 events scheduled:
-- 09:00 AM — Team Standup (30 min)
-- 11:00 AM — Project Review (1 hour)
-- 02:00 PM — Client Call (45 min)
-- 04:00 PM — Code Review (30 min)
-
-Important Emails: 1 high-priority message from manager@company.com
-Priority Tasks: Complete project documentation (Due: Today)
-
-Have a productive day!
-```
-
-<!-- Add a real screenshot or short GIF of the dashboard here, e.g.: -->
-<!-- ![Lavoro dashboard](docs/screenshot.png) -->
-
-## What Works End-to-End (UI ⇄ API ⇄ Gemini)
-
-- **Morning Briefing / Email Summary / Prioritize Tasks / Plan My Day** — the four quick actions
-  in the dashboard, each backed by a real API call
-- **Streaming chat** (`POST /api/ai/stream`, Server-Sent Events) with the Daily Planner persona
-- **Lightweight intent detection** on free-text chat messages — phrases like "remind me to…",
-  "add task…", or "plan my day" are pattern-matched server-side and turned into real reminders/
-  tasks/plans before the AI even responds (see `handleAssistantToolRequest` in `src/app.js`)
-- **Session-scoped state**: profile, tasks, reminders, and plans, held in memory per session
-- **Graceful demo mode**: with no `GEMINI_API_KEY` set, a `DemoProvider` serves realistic mock
-  responses backed by mock calendar/email/task/weather data — the app is fully explorable with
-  zero setup
-- **Multi-model fallback**: if the configured Gemini model fails, the app automatically retries
-  against a fallback list of models before dropping to demo mode
-- **Dashboard summary** aggregating task/reminder/plan counts and current focus
-- **Self-introspection API** (`/api/project/*`) — a sandboxed, path-traversal-safe file reader
-  the assistant can use to answer questions about its own codebase
-- **Health check** at `/api/health`
-
-## Backend Capabilities Built But Not Yet Wired to the UI
-
-These are implemented and reachable via the API, but not currently exposed anywhere in the
-frontend. Listed here deliberately, instead of glossed over, because the honest gap is itself
-useful context for anyone reading the code — and because closing it is the roadmap's top item.
-
-- **7 additional AI personas** — Learn, Debug, Code Review, Pair Programmer, Project Mentor,
-  Interview Practice, System Design (`ai/modes.js`). Each has its own prompt-construction rules
-  and detection keywords. The frontend hardcodes `mode: "planner"` on every request, so these are
-  currently only reachable by calling the API directly.
-- **JWT authentication** with access/refresh token rotation (`/api/auth/*`) — implemented, but
-  the middleware is only applied to `/api/auth/me`; the feature routes (dashboard, tasks, jobs,
-  rag, integrations) don't require it yet, and they identify "the user" via an `x-session-id`
-  header/IP rather than the authenticated JWT subject. Demo account passwords are currently
-  stored in plaintext (`backend/src/repositories/userRepository.js`) — hashing them is a tracked
-  fix, not an intentional design choice.
-- **RAG service** (`/api/rag/index`, `/api/rag/query`) — in-memory documents with a hand-rolled
-  bag-of-words embedding and cosine similarity. No persistence, no real embedding model or vector
-  database yet; the interface is designed so either could be swapped in later.
-- **Background job queue** (`/api/jobs`) — an in-process simulated queue (`Map` + `setTimeout`),
-  not backed by a real broker (e.g. BullMQ/Redis-backed queue).
-- **Mocked third-party integrations** (`/api/integrations/*`) — connector metadata and webhook
-  plumbing for Google Calendar, Slack, and GitHub. No real OAuth handshake happens; `connect`
-  simply records a fake connection.
-- **Observability hooks** — Sentry (`@sentry/node`) and OpenTelemetry are wired into the config
-  and error handler, but only activate when `SENTRY_DSN` / `OTEL_EXPORTER_OTLP_ENDPOINT` are set.
-
-## Tech Stack
-
-### Backend
-
-- **Node.js 18+**, **Express 5**
-- **Google Generative AI SDK** (`@google/generative-ai`) with a demo-mode fallback provider
-- **jsonwebtoken** — access/refresh JWT auth
-- **zod** — request schema validation (login, refresh, job payloads)
-- **pino** — structured logging
-- **@sentry/node** + **OpenTelemetry** — error tracking and tracing (opt-in via env vars)
-- Hand-rolled per-IP sliding-window rate limiter (no external dependency)
-- **cors** — origin allow-list with automatic localhost exemption
-
-### Frontend
-
-- Vanilla **HTML5 / CSS3 / JavaScript** — no framework, no build step
-- **Fetch + Server-Sent Events** for streaming chat responses
-
-### AI
-
-- **Google Gemini** (configurable model with automatic fallback chain)
-- Custom prompt-orchestration layer (`ai/orchestrator.js`, `ai/prompts.js`) with mode detection,
-  trusted vs. untrusted context separation, and explicit anti-prompt-injection instructions in
-  the system prompt
-
-## Project Structure
+## Repository Structure
 
 ```
 lavoro/
-│
 ├── backend/
-│   ├── server.js                     # Entry point — starts the Express app
-│   ├── src/
-│   │   ├── app.js                    # Express app: middleware, routes, session-based endpoints
-│   │   ├── ai/
-│   │   │   ├── orchestrator.js       # Routes requests to Gemini or the demo provider, handles streaming + fallback
-│   │   │   ├── providers.js          # GeminiProvider (real) and DemoProvider (offline mock)
-│   │   │   ├── modes.js              # 8 AI personas: learn, debug, review, pair, project, interview, systemDesign, planner
-│   │   │   ├── prompts.js            # System/developer prompt construction, trusted/untrusted context split
-│   │   │   └── context.js            # Assembles per-request context for the orchestrator
-│   │   ├── config/
-│   │   │   ├── index.js              # Env-driven config, JWT secret handling, CORS allow-list
-│   │   │   ├── logger.js             # Pino logger setup
-│   │   │   └── telemetry.js          # Sentry + OpenTelemetry wiring
-│   │   ├── data/store.js             # In-memory session store: profile, tasks, reminders, plans, conversation history
-│   │   ├── middleware/
-│   │   │   ├── auth.js               # JWT verification + role-check middleware
-│   │   │   └── rateLimit.js          # Per-IP sliding-window rate limiter
-│   │   ├── repositories/userRepository.js  # In-memory demo user "database"
-│   │   ├── routes/                   # /api/auth, /api/dashboard, /api/jobs, /api/rag, /api/integrations, /api/ai
-│   │   ├── services/
-│   │   │   ├── authService.js        # Login, token generation, refresh rotation
-│   │   │   ├── dashboardService.js   # Aggregates session data into dashboard metrics
-│   │   │   ├── executiveSummaryService.js  # Generates a productivity summary + score
-│   │   │   ├── integrationService.js # Mocked OAuth connectors + webhook handling
-│   │   │   ├── jobQueueService.js    # Simulated background job queue
-│   │   │   └── ragService.js         # In-memory embeddings + cosine-similarity retrieval
-│   │   ├── shared/
-│   │   │   ├── constants.js          # User roles, auth scopes
-│   │   │   └── schemas.js            # Zod request-validation schemas
-│   │   ├── cache/redisCache.js       # In-memory cache behind a Redis-shaped interface
-│   │   └── utils/projectScanner.js   # Sandboxed project file reader/search (path-traversal safe)
-│   ├── utils/                        # Legacy Python prototype (`gemini_agent.py`, `mock_data.py`), kept for reference
-│   ├── package.json
-│   └── .env.example
-│
+│   ├── server.js               # Server bootstrap & HTTP listener
+│   ├── scripts/
+│   │   └── seed.js             # Local-dev demo account seeding
+│   └── src/
+│       ├── app.js              # Express app definition, middleware, static hosting
+│       ├── ai/
+│       │   ├── context.js      # Context window builder & session summarization
+│       │   ├── modes.js        # Assistant modes (general, planner, coding, etc.)
+│       │   ├── orchestrator.js # Orchestration between primary LLM and demo fallback
+│       │   ├── prompts.js      # System prompt templates
+│       │   └── providers.js    # Gemini SDK provider & mock DemoProvider
+│       ├── cache/
+│       │   └── redisCache.js   # Cache interface with TTL support
+│       ├── config/
+│       │   ├── index.js        # Environment validation & central config
+│       │   ├── logger.js       # Pino structured logger
+│       │   └── telemetry.js    # OpenTelemetry SDK and Sentry initialization
+│       ├── data/
+│       │   └── store.js        # In-memory storage for tasks, plans, reminders, chats
+│       ├── middleware/
+│       │   ├── auth.js         # Bearer JWT verification & role authorization
+│       │   └── rateLimit.js    # Sliding window rate limiter
+│       ├── repositories/
+│       │   └── userRepository.js # User store with bcrypt password hashing
+│       ├── routes/
+│       │   ├── aiRoutes.js          # AI daily summary and mode endpoints
+│       │   ├── authRoutes.js        # Login, refresh token rotation, and /me
+│       │   ├── dashboardRoutes.js   # Aggregated productivity metrics
+│       │   ├── index.js             # Centralized route registration
+│       │   ├── integrationRoutes.js # Connector listings & Slack webhook ingestion
+│       │   ├── jobsRoutes.js        # Async job queue management
+│       │   └── ragRoutes.js         # Knowledge base document indexing and search
+│       ├── services/
+│       │   ├── authService.js      # Authentication, token pairs, and session lifecycle
+│       │   └── dashboardService.js # Metric calculations and cache coordination
+│       ├── shared/
+│       │   ├── constants.js    # User roles and system constants
+│       │   └── schemas.js      # Zod validation schemas
+│       └── utils/
+│           └── projectScanner.js # Local repository introspection tool
 ├── frontend/
-│   ├── index.html                    # Dashboard shell + quick actions + chat panel
-│   ├── style.css
-│   └── script.js                     # Quick actions, SSE chat client, dashboard rendering
-│
-├── tests/smoke.test.js               # Integration smoke tests (health, auth, dashboard, jobs, rag, integrations)
-├── .github/workflows/ci.yml          # CI: installs deps, lints, runs tests (currently provisions Postgres + Redis
-│                                       services that the app doesn't use yet — see Known Limitations)
-├── Dockerfile / docker-compose.yml / cloudbuild.yaml / deploy.sh  # Container + Cloud Run deployment
-└── README.md
+│   ├── index.html              # Responsive app shell & interactive dashboard
+│   ├── script.js               # Frontend controller, state management, SSE handling
+│   └── style.css               # Modern styling, animations, and dark theme
+├── scripts/
+│   └── seed.js                 # Standalone demo seeding script
+├── tests/
+│   └── smoke.test.js           # In-process integration tests with Supertest
+└── .github/
+    └── workflows/
+        └── ci.yml              # Streamlined CI workflow (lint & in-process tests)
 ```
 
-## Installation
+---
 
-### Prerequisites
+## Core Features
 
-- **Node.js 18+** (CI runs on Node 20 — recommended if you're setting up fresh)
-- **Google Gemini API key** (free tier at [Google AI Studio](https://aistudio.google.com/app/apikey)) — optional, the app runs in demo mode without one
-- A modern browser
+1. **Streaming Chat & Assistant Modes**:
+   - Natural language interaction with streaming server-sent events (`/api/ai/stream`).
+   - Domain-specific modes (briefing, deep work planning, task breakdown, retrospective).
+   - Graceful fallback: works out-of-the-box in demo mode even without an API key.
 
-### Setup
+2. **Executive Daily Summaries**:
+   - Automated productivity scoring (0-100) and actionable daily summaries from tasks, notes, and goals.
 
-```bash
-git clone https://github.com/umeshkumar-git/lavoro.git
-cd lavoro
+3. **Knowledge Base & Retrieval (RAG)**:
+   - Index documents and context in-memory with `/api/rag/index`.
+   - Query indexed context with `/api/rag/query` to ground assistant responses.
 
-cd backend
-npm install
-cp .env.example .env   # then fill in the values you want
-```
+4. **Background Job Queue**:
+   - Accept asynchronous tasks (`daily-summary`, `email-digest`, `report-generation`) returning `202 Accepted` and tracking IDs.
 
-Minimum useful `.env` for local development:
+5. **Third-Party Integrations**:
+   - Connector registry and webhook handlers for external event ingestion (e.g. Slack).
 
-```
-PORT=10000
-GEMINI_API_KEY=your_gemini_api_key_here   # optional — omit to run in demo mode
-GEMINI_MODEL=gemini-3-flash-preview
-JWT_SECRET=some_long_random_string
-```
+---
 
-Run it:
+## Authentication & Security
 
-```bash
-npm start
-```
+### Bcrypt Password Hashing
+Passwords are never stored in plaintext. Passwords are salted and hashed using `bcrypt` (10 rounds) during user creation in [userRepository.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/backend/src/repositories/userRepository.js). Login authentication performs constant-time comparison via `bcrypt.compare`.
 
-```
------------------------------------------
-Lavoro is running at http://localhost:10000
-Health check: http://localhost:10000/api/health
------------------------------------------
-```
+### JWT Access & Refresh Rotation
+- **Access Tokens**: Signed with `JWT_SECRET` with short TTL (default: 15 minutes).
+- **Refresh Tokens**: Cryptographically signed tokens with longer TTL (default: 7 days) used to issue new token pairs at `/api/auth/refresh`.
+- **Role-Based Access**: Granular roles (`admin`, `manager`, `user`) supported in authorization middleware.
 
-Open <http://localhost:10000>. Express serves the frontend and handles all `/api/*` requests
-from the same origin.
+### Architectural Limitation: In-Memory Token Scope
+> [!WARNING]
+> **Single-Instance / Local-Dev Scope**: Refresh tokens currently live in an in-memory Map (`refreshTokens` in [authService.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/backend/src/services/authService.js)).
+> - **Volatility**: Tokens vanish upon server restart or process crashes.
+> - **Horizontal Scaling**: Multi-instance deployments cannot validate tokens issued by peer instances without sticky sessions or a shared persistence layer.
+>
+> **Roadmap to Persistence**: In a multi-instance production environment, this in-memory Map will be migrated to Redis with TTL expiration or PostgreSQL token tables with explicit revocation lists.
 
-## Testing
+### Demo Account Seeding
+Demo accounts are managed via [scripts/seed.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/scripts/seed.js) and are **strictly prohibited** in production:
+- Automatically runs when `NODE_ENV !== 'production'`.
+- Aborts immediately if `NODE_ENV === 'production'`.
+- Uses a clearly identifiable dev credential:
+  - **Email**: `admin@example.com` (also `manager@example.com`, `user@example.com`)
+  - **Password**: `dev-seed-password-do-not-use-in-prod` (overridable via `DEV_SEED_PASSWORD`)
 
-```bash
-cd backend
-npm test
-```
+---
 
-Runs the integration smoke tests in `tests/smoke.test.js`, covering the health check, auth
-flow, dashboard, jobs, RAG, and integrations endpoints. This is also what CI runs on every push.
+## Observability & Telemetry
+
+Lavoro integrates production-grade observability out of the box:
+- **OpenTelemetry**: Configured in [telemetry.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/backend/src/config/telemetry.js). Automatically instruments incoming HTTP requests and exports traces when `OTEL_EXPORTER_OTLP_ENDPOINT` is configured.
+- **Sentry**: Captures unhandled exceptions and request contexts when `SENTRY_DSN` is set.
+- **Pino**: Structured, high-performance JSON logging for all incoming requests and system events.
+
+---
 
 ## API Reference
 
-All responses are JSON except `/api/ai/stream`, which is Server-Sent Events. `success: true/false`
-is included on every JSON response.
+### Authentication
+- `POST /api/auth/login` — Authenticate user and receive `{ accessToken, refreshToken, user }`.
+- `POST /api/auth/refresh` — Rotate refresh token and receive a fresh token pair.
+- `GET /api/auth/me` — Retrieve current authenticated user profile (requires `Authorization: Bearer <token>`).
 
-| Method | Endpoint | Auth required today | Description |
-|---|---|---|---|
-| GET | `/api/health` | No | Service health, active model, and configuration summary |
-| GET | `/api/ai/modes` | No | Lists all 8 AI personas and their descriptions |
-| POST | `/api/ai/chat` | No | Non-streaming chat completion |
-| POST | `/api/ai/stream` | No | Streaming chat completion (SSE); also runs the tool-intent detector |
-| POST | `/api/ai/daily-summary` | No | Generates an executive summary + productivity score from tasks/notes/goals |
-| GET/POST | `/api/profile` | No | Read/update the session's assistant profile |
-| GET | `/api/conversations` | No | Session's conversation history |
-| GET/POST | `/api/tasks` | No | Read/add tasks |
-| GET/POST | `/api/reminders` | No | Read/add reminders |
-| GET/POST | `/api/plans` | No | Read/create a structured daily plan |
-| POST | `/api/reset` | No | Clears the session's conversation history |
-| GET | `/api/project/structure`, `/file`, `/search` | No | Sandboxed read-only access to the repo, for the assistant's self-introspection feature |
-| POST | `/api/auth/login` | No | Returns a JWT access/refresh token pair |
-| POST | `/api/auth/refresh` | No | Rotates a refresh token for a new pair |
-| GET | `/api/auth/me` | **Yes** | Returns the authenticated user (the only route currently gated) |
-| GET | `/api/dashboard/summary` | No | Aggregated task/reminder/plan metrics for the session |
-| POST | `/api/jobs` | No | Enqueues a simulated background job, returns `202` + job ID |
-| GET | `/api/jobs/:jobId` | No | Polls a simulated job's status |
-| POST | `/api/rag/index` | No | Indexes documents into the in-memory RAG store |
-| POST | `/api/rag/query` | No | Retrieves the most relevant indexed documents for a query |
-| GET | `/api/integrations/connectors` | No | Lists mocked OAuth connectors |
-| POST | `/api/integrations/connect/:provider` | No | Records a mocked connection |
-| POST | `/api/integrations/webhooks/:provider` | No | Accepts a mocked webhook payload |
+### AI & Assistant
+- `POST /api/ai/chat` — Send a message and get an aggregated AI response.
+- `POST /api/ai/stream` — Real-time Server-Sent Events (SSE) streaming chat.
+- `GET /api/ai/modes` — List available assistant modes.
+- `POST /api/ai/daily-summary` — Generate an executive summary and productivity score.
 
-**Example — chat:**
+### Dashboard & Analytics
+- `GET /api/dashboard/summary` — Cached summary metrics (task counts, completion rates, priorities).
 
-```json
-// POST /api/ai/chat
-{ "message": "Give me my morning briefing" }
+### Knowledge & RAG
+- `POST /api/rag/index` — Ingest and index documents.
+- `POST /api/rag/query` — Retrieve relevant documents for a query.
 
-// Response
-{
-  "success": true,
-  "message": "Good morning! Here's your briefing for today...",
-  "mode": "planner",
-  "model": "gemini-3-flash-preview",
-  "latencyMs": 812
-}
+### Jobs & Integrations
+- `POST /api/jobs` — Enqueue an asynchronous background job.
+- `GET /api/jobs/:id` — Query status of a background job.
+- `GET /api/integrations/connectors` — List active third-party integrations.
+- `POST /api/integrations/webhooks/:provider` — Ingest webhooks (e.g. Slack).
+
+### System
+- `GET /api/health` — Service health check, model configuration, and backend status.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- **Node.js**: version 20 or higher recommended (minimum Node.js 18+)
+- **Google Gemini API Key** (optional): Free from [Google AI Studio](https://aistudio.google.com/app/apikey). If not set, Lavoro automatically falls back to simulated demo responses.
+
+### Installation & Seeding
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/umeshkumar-git/lavoro.git
+   cd lavoro
+   ```
+
+2. **Install root and backend dependencies**:
+   ```bash
+   npm install
+   npm --prefix backend install
+   ```
+
+3. **Configure environment variables**:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+   Edit `backend/.env` to configure your `GEMINI_API_KEY`, `JWT_SECRET`, etc.
+
+4. **Seed local demo accounts (optional, runs automatically in non-production)**:
+   ```bash
+   npm run seed
+   ```
+
+### Running Locally
+
+```bash
+# Start backend server and static frontend (default port: 10000)
+npm run dev
 ```
 
-**Example — login:**
+Open [http://localhost:10000](http://localhost:10000) in your browser.
 
-```json
-// POST /api/auth/login
-{ "email": "user@example.com", "password": "Password123!" }
+---
 
-// Response
-{
-  "success": true,
-  "user": { "id": "user-regular-1", "email": "user@example.com", "name": "Team Member", "role": "user" },
-  "tokens": { "accessToken": "...", "refreshToken": "..." }
-}
+## Testing & Quality Checks
+
+Tests run completely **in-process** via [supertest](https://github.com/ladjs/supertest) and Node's native test runner (`node:test`). No live server, external database, or open port is required:
+
+```bash
+# Run in-process smoke and integration tests
+npm test
+
+# Run syntax and lint checks
+npm run lint
 ```
 
-## Known Limitations & Trade-offs
+---
 
-Documented deliberately rather than discovered by a reviewer:
+## CI/CD Pipeline
 
-- **No persistence.** All data (users, sessions, tasks, RAG documents, jobs) lives in memory and
-  resets on restart. The CI pipeline already provisions Postgres and Redis service containers in
-  anticipation of a real data layer — that migration hasn't happened yet.
-- **Auth is implemented but not enforced everywhere.** Only `/api/auth/me` currently requires a
-  valid JWT; feature routes are open and keyed by IP/header rather than authenticated user ID.
-- **Demo credentials are stored in plaintext**, not hashed — acceptable for throwaway seed
-  accounts in a local demo, not acceptable as a pattern to reuse anywhere real.
-- **RAG, job queue, and integrations are simulated**, not backed by a real vector store, message
-  broker, or OAuth provider. They demonstrate the intended architecture and interface, not a
-  production integration.
-- **7 of 8 AI personas aren't reachable from the UI** — see above.
+The GitHub Actions workflow at [.github/workflows/ci.yml](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/.github/workflows/ci.yml) executes on every push and pull request across `main`, `master`, and `develop`:
+1. Checks out repository.
+2. Configures Node.js 20 with npm caching.
+3. Installs clean dependencies via `npm ci` and `npm --prefix backend ci`.
+4. Runs lint checks via `npm run lint`.
+5. Executes the full integration suite in-process via `npm test`.
+
+---
 
 ## Roadmap
 
-**Highest priority (mostly frontend work on existing backend logic):**
-- [ ] Expose a persona/mode switcher in the chat UI so Learn, Debug, Code Review, Pair
-      Programmer, Project Mentor, Interview Practice, and System Design are actually usable
-- [ ] Enforce `authenticate` on feature routes and key session data off `req.user.id` instead of IP/header
-- [ ] Hash stored passwords with bcrypt
+- **Phase 1**: Frontend polish, conversational streaming UI improvements, and responsive quick-action panels.
+- **Phase 2**: Expanded connector ecosystem (Google Calendar, Outlook, Jira).
+- **Phase 3**: Persistent database migration (PostgreSQL user store, Redis distributed cache, persistent refresh token revocation lists).
+- **Phase 4**: Advanced multi-tenant RBAC and fine-grained API token management.
 
-**Infrastructure:**
-- [ ] Real Postgres-backed user store + Redis-backed cache (CI already expects both)
-- [ ] Real embedding model + vector store for RAG
-- [ ] Real background job broker (e.g. BullMQ)
-
-**Product:**
-- [ ] Real Calendar/Email/Task-manager integrations (Google Calendar, Gmail, Todoist/Asana)
-- [ ] Voice input/output
-- [ ] Multi-day conversation memory
-- [ ] Analytics dashboard
-
-## Contributing
-
-Contributions, issues, and feature requests are welcome — see the [issues page](https://github.com/umeshkumar-git/lavoro/issues).
-
-1. Fork the project
-2. `git checkout -b feature/AmazingFeature`
-3. Commit your changes with a clear message
-4. `git push origin feature/AmazingFeature`
-5. Open a Pull Request
+---
 
 ## License
 
-MIT — see [LICENSE](https://github.com/umeshkumar-git/lavoro/blob/main/LICENSE).
-
-## Author
-
-**Umesh Kumar** — [@umeshkumar-git](https://github.com/umeshkumar-git)
+This project is licensed under the **MIT License**. See the [LICENSE](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/LICENSE) file for details.

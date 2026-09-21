@@ -1,7 +1,22 @@
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const { findByEmail, findById } = require("../repositories/userRepository");
 
+/**
+ * ARCHITECTURAL LIMITATION & SECURITY WARNING:
+ * Refresh tokens currently live in an in-memory Map (`refreshTokens`).
+ *
+ * Known limitations:
+ * 1. Volatility: Tokens vanish upon server restart or process crash.
+ * 2. Horizontal Scaling: Does not work across multiple server instances or cluster nodes
+ *    because state is not shared between processes.
+ *
+ * Intended Scope:
+ * Intentionally kept as single-instance in-memory for Phase 0 local development.
+ * For Phase 3 production deployments, this store MUST be migrated to a distributed persistence
+ * layer (e.g. Redis with TTL / PostgreSQL session store) with support for token revocation lists.
+ */
 const refreshTokens = new Map();
 
 function generateTokenPair(user) {
@@ -39,9 +54,16 @@ function verifyToken(token) {
 	}
 }
 
-function loginUser({ email, password }) {
+async function loginUser({ email, password }) {
 	const user = findByEmail(email);
-	if (!user || user.password !== password) {
+	if (!user) {
+		throw Object.assign(new Error("Invalid email or password."), {
+			statusCode: 401,
+		});
+	}
+
+	const passwordMatches = await bcrypt.compare(password, user.password);
+	if (!passwordMatches) {
 		throw Object.assign(new Error("Invalid email or password."), {
 			statusCode: 401,
 		});
