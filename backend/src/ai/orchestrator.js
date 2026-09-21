@@ -8,10 +8,11 @@ const MAX_MESSAGE_LENGTH = 24_000;
 const MAX_ATTACHMENTS = 4;
 
 class AIOrchestrator {
-	constructor({ primaryProvider, fallbackProvider, getProjectStructure }) {
+	constructor({ primaryProvider, fallbackProvider, getProjectStructure } = {}) {
+		const { DemoProvider } = require("./providers");
 		this.primaryProvider = primaryProvider;
-		this.fallbackProvider = fallbackProvider;
-		this.getProjectStructure = getProjectStructure;
+		this.fallbackProvider = fallbackProvider || new DemoProvider();
+		this.getProjectStructure = getProjectStructure || (async () => ({}));
 	}
 
 	async generate(request) {

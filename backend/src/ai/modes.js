@@ -104,11 +104,28 @@ function detectMode(message, requestedMode) {
 	}
 
 	const normalized = String(message || "").toLowerCase();
-	const match = Object.entries(AI_MODES).find(([, mode]) =>
+
+	// Check specialized modes first (briefing, planner, tasks, email, summary)
+	const specializedEntries = Object.entries(AI_MODES).filter(
+		([key]) => key !== DEFAULT_MODE,
+	);
+	const specializedMatch = specializedEntries.find(([, mode]) =>
 		mode.keywords.some((keyword) => normalized.includes(keyword)),
 	);
+	if (specializedMatch) {
+		return specializedMatch[0];
+	}
 
-	return match ? match[0] : DEFAULT_MODE;
+	// Check assistant keywords
+	const assistantMode = AI_MODES[DEFAULT_MODE];
+	if (
+		assistantMode &&
+		assistantMode.keywords.some((keyword) => normalized.includes(keyword))
+	) {
+		return DEFAULT_MODE;
+	}
+
+	return DEFAULT_MODE;
 }
 
 module.exports = {

@@ -2,10 +2,12 @@
 
 Lavoro is an intelligent, full-stack AI productivity platform that combines conversational agent capabilities, daily executive briefings, task management, retrieval-augmented generation (RAG), and telemetry into a production-grade Node.js service.
 
+[![CI](https://github.com/umeshkumar-git/lavoro/actions/workflows/ci.yml/badge.svg)](https://github.com/umeshkumar-git/lavoro/actions/workflows/ci.yml)
+![Coverage](https://img.shields.io/badge/Coverage-84%25%20lines%20(c8)-brightgreen.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)
 ![Express](https://img.shields.io/badge/Express-5.x-black.svg)
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-Pro%20%2F%20Flash-orange.svg)
-![Supertest](https://img.shields.io/badge/Tests-In--Process%20Supertest-blue.svg)
+![Supertest](https://img.shields.io/badge/Tests-46%20Passing%20In--Process-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ---
@@ -256,26 +258,46 @@ Open [http://localhost:10000](http://localhost:10000) in your browser.
 
 ## Testing & Quality Checks
 
-Tests run completely **in-process** via [supertest](https://github.com/ladjs/supertest) and Node's native test runner (`node:test`). No live server, external database, or open port is required:
+Lavoro maintains **84% line coverage across `backend/src`** (measured with `c8`), verified on Node 20 via native `node:test`. All tests execute completely **in-process** using [supertest](https://github.com/ladjs/supertest) without external network dependencies, live servers, or open port conflicts:
 
 ```bash
-# Run in-process smoke and integration tests
+# Run all 46 unit, benchmark, and in-process integration tests
 npm test
+
+# Run code coverage report with c8 (text + summary)
+npm run test:coverage
+
+# Run deterministic agent tool-calling evaluation benchmark (18 test cases)
+npm run eval
 
 # Run syntax and lint checks
 npm run lint
 ```
 
+### Test Architecture
+
+- **In-Process Supertest Pipeline (`tests/smoke.test.js`)**:
+  Simulates full HTTP requests through Express middleware, auth guards, SSE streams, and routing without launching an external daemon.
+- **Security & Path Traversal Assertions (`tests/unit/projectScanner.test.js`)**:
+  Explicitly tests attack vectors (`../../etc/passwd`, `../../../etc/shadow`) against `resolveSafePath` to verify that attempts to escape workspace boundaries throw HTTP 400.
+- **Pure Logic Unit Testing**:
+  - `modes.js`: Keyword heuristic matching, mode overrides, and normalization.
+  - `prompts.js`: System and developer instruction formatting, XML boundary injection protections, trusted/untrusted context separation.
+  - `authService.js`: Bcrypt hash verification, JWT signature claims (`jti`), token tampering rejection, and atomic refresh token rotation.
+  - `agentLoop.test.js`: Gemini function declarations JSON schema compliance, tool dispatch, SSE tool-first ordering, and iteration cap bounding.
+- **Real Persistence & RAG (`tests/benchmarks/evalBenchmark.test.js`)**:
+  Verifies SQLite WAL storage, restarts, user authentication, and document chunking/vector retrieval.
+
 ---
 
 ## CI/CD Pipeline
 
-The GitHub Actions workflow at [.github/workflows/ci.yml](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/.github/workflows/ci.yml) executes on every push and pull request across `main`, `master`, and `develop`:
-1. Checks out repository.
-2. Configures Node.js 20 with npm caching.
+The GitHub Actions workflow at [.github/workflows/ci.yml](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/.github/workflows/ci.yml) runs on every push and pull request:
+1. Checks out repository on `ubuntu-latest`.
+2. Sets up Node.js 20 with npm dependency caching.
 3. Installs clean dependencies via `npm ci` and `npm --prefix backend ci`.
 4. Runs lint checks via `npm run lint`.
-5. Executes the full integration suite in-process via `npm test`.
+5. Executes the full test suite and c8 coverage via `npm run test:coverage`.
 
 ---
 

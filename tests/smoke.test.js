@@ -231,3 +231,112 @@ test("agent loop processes tool calling requests and records workspace state", a
 		"newly created task should appear in user tasks",
 	);
 });
+
+test("auth refresh and session verification route", async () => {
+	const loginRes = await request(app)
+		.post("/api/auth/login")
+		.send({ email: "admin@example.com", password: DEV_SEED_PASSWORD });
+	assert.equal(loginRes.status, 200);
+
+	const refreshRes = await request(app)
+		.post("/api/auth/refresh")
+		.send({ refreshToken: loginRes.body.tokens.refreshToken });
+	assert.equal(refreshRes.status, 200);
+	assert.ok(refreshRes.body.tokens.accessToken);
+	assert.ok(refreshRes.body.tokens.refreshToken);
+
+	const invalidRefresh = await request(app)
+		.post("/api/auth/refresh")
+		.send({ refreshToken: "bad.token.here" });
+	assert.equal(invalidRefresh.status, 401);
+});
+
+test("jobs endpoint allows status inspection by ID", async () => {
+	const createRes = await request(app)
+		.post("/api/jobs")
+		.send({ type: "daily-summary", payload: { userId: "admin" } });
+	assert.equal(createRes.status, 202);
+
+	const statusRes = await request(app).get(`/api/jobs/${createRes.body.jobId}`);
+	assert.equal(statusRes.status, 200);
+	assert.equal(statusRes.body.job.id, createRes.body.jobId);
+
+	const notFound = await request(app).get("/api/jobs/non-existent-job-id");
+	assert.equal(notFound.status, 404);
+});
+
+test("project endpoints provide structure, file viewing, and search", async () => {
+	const structRes = await request(app).get("/api/project/structure");
+	assert.equal(structRes.status, 200);
+	assert.ok(Array.isArray(structRes.body.project.files));
+	assert.ok(structRes.body.project.files.length > 0);
+
+	const fileRes = await request(app).get("/api/project/file?path=README.md");
+	assert.equal(fileRes.status, 200);
+	assert.ok(fileRes.body.file.content.length > 0);
+
+	const searchRes = await request(app).get("/api/project/search?q=Lavoro");
+	assert.equal(searchRes.status, 200);
+	assert.ok(Array.isArray(searchRes.body.results));
+});
+
+test("reminders, plans, profile, and conversation management", async () => {
+	const sessionId = "smoke-crud-session";
+
+	// Reminders
+	const reminderRes = await request(app)
+		.post("/api/reminders")
+		.set("x-session-id", sessionId)
+		.send({ title: "Call accountant", when: "tomorrow 10:00" });
+	assert.equal(reminderRes.status, 200);
+	assert.ok(reminderRes.body.reminders.length > 0);
+
+	const listReminders = await request(app)
+		.get("/api/reminders")
+		.set("x-session-id", sessionId);
+	assert.equal(listReminders.status, 200);
+
+	// Plans
+	const planRes = await request(app)
+		.post("/api/plans")
+		.set("x-session-id", sessionId)
+		.send({ prompt: "Plan my workday" });
+	assert.equal(planRes.status, 200);
+	assert.ok(planRes.body.plan.summary);
+
+	const listPlans = await request(app)
+		.get("/api/plans")
+		.set("x-session-id", sessionId);
+	assert.equal(listPlans.status, 200);
+
+	// Profile
+	const profileRes = await request(app)
+		.post("/api/profile")
+		.set("x-session-id", sessionId)
+		.send({ name: "Alex Test", timezone: "America/New_York" });
+	assert.equal(profileRes.status, 200);
+	assert.equal(profileRes.body.profile.name, "Alex Test");
+
+	const getProfile = await request(app)
+		.get("/api/profile")
+		.set("x-session-id", sessionId);
+	assert.equal(getProfile.status, 200);
+
+	// Reset
+	const resetRes = await request(app)
+		.post("/api/reset")
+		.set("x-session-id", sessionId);
+	assert.equal(resetRes.status, 200);
+});
+
+test("chat streaming endpoint yields Server-Sent Events", async () => {
+	const response = await request(app)
+		.post("/api/ai/stream")
+		.send({
+			message: "What is my morning briefing?",
+			sessionId: "stream-test-session",
+		});
+	assert.equal(response.status, 200);
+	assert.match(response.headers["content-type"], /text\/event-stream/);
+	assert.match(response.text, /data:/);
+});

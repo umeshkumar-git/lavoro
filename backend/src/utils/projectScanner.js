@@ -137,5 +137,6 @@ function isTextFile(filePath) {
 module.exports = {
 	getProjectStructure,
 	readProjectFile,
+	resolveSafePath,
 	searchProject,
 };

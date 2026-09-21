@@ -165,13 +165,14 @@ function detectToolIntent(message) {
 
 	// 1. Task Creation
 	if (
-		/\b(add task|create task|new task|add to-do|add todo|put ['"].*?['"] on my task list)\b/i.test(
+		/\b(add (?:a |an )?(?:high |medium |low )?(?:priority )?task|create (?:a |an )?(?:high |medium |low )?(?:priority )?task|new task|add to-do|add todo|add a to-do|create a to-do|put ['"].*?['"] on my task list)\b/i.test(
 			lower,
 		) ||
-		(lower.startsWith("add a task") || lower.startsWith("create a task") || lower.startsWith("put "))
+		/\b(add|create)\b.*\btask\b/i.test(lower) ||
+		lower.startsWith("put ")
 	) {
 		let title = text
-			.replace(/^.*?\b(add a task to|add task to|create a task to|create task to|add a task:|add task:|add to-do:|add todo:|new task:|put )/i, "")
+			.replace(/^.*?\b(add|create)\s+(?:a\s+|an\s+)?(?:high\s+|medium\s+|low\s+)?(?:priority\s+)?(?:task|to-do|todo)(?:\s+to|\s*:)?/i, "")
 			.replace(/\b(on my task list|on my to-do list|with high priority|with medium priority|with low priority)\b/gi, "")
 			.replace(/\b(tomorrow|today|this week)\b/gi, "")
 			.replace(/^[\s:'"]+|[\s:'"]+$/g, "")
@@ -200,7 +201,7 @@ function detectToolIntent(message) {
 		)
 	) {
 		let title = text
-			.replace(/^.*?\b(remind me to|remind me about|set a reminder for|set a reminder to|add reminder for|add reminder to|don't let me forget to|dont let me forget to)\b/i, "")
+			.replace(/^.*?\b(remind me|set a reminder|add reminder|don't let me forget|dont let me forget)\s*(?:tomorrow|today)?\s*(?:at [^,\s]+)?\s*(?:to|for|about|:)?\s*/i, "")
 			.replace(/^(tomorrow|today|at|on)\s+/i, "")
 			.replace(/[.!?]+$/, "")
 			.trim();
