@@ -69,6 +69,11 @@ gcloud builds submit \
 
 echo -e "${GREEN}✓ Docker image built and pushed${NC}"
 
+# Generate a random 32-character JWT secret if not provided
+if [ -z "$JWT_SECRET" ]; then
+  JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+fi
+
 # Deploy to Cloud Run
 echo ""
 echo -e "${YELLOW}Deploying to Cloud Run...${NC}"
@@ -78,7 +83,10 @@ gcloud run deploy lavoro \
   --region $REGION \
   --allow-unauthenticated \
   --set-env-vars GEMINI_API_KEY="$GEMINI_API_KEY" \
-  --set-env-vars GEMINI_MODEL="gemini-2-flash" \
+  --set-env-vars GEMINI_MODEL="gemini-3-flash-preview" \
+  --set-env-vars DATABASE_URL="sqlite:///app/data/lavoro.db" \
+  --set-env-vars NODE_ENV="production" \
+  --set-env-vars JWT_SECRET="$JWT_SECRET" \
   --memory 512Mi \
   --cpu 2 \
   --timeout 3600 \

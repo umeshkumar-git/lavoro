@@ -37,13 +37,79 @@ Lavoro is an intelligent, full-stack AI productivity platform that combines conv
 
 ## Architecture Overview
 
-Lavoro is structured around a decoupled, modular Express 5 backend that serves both an API and a high-performance static frontend shell:
+Lavoro is structured around a decoupled, modular Express 5 backend that serves both a secure API and a high-performance static frontend shell:
+
+```mermaid
+flowchart TD
+    Client["Client Request<br/>(Browser Shell / REST API)"]
+    
+    subgraph ExpressLayer ["Express 5 Application & Security Middleware"]
+        Helmet["Helmet Security Headers<br/>(CSP, X-Frame-Options, No-Sniff)"]
+        RateLimit["Rate Limiting Tier<br/>(Auth: 5/min, API: 60/min)"]
+        Cors["CORS Policy & Origin Validation"]
+        ZodValidation["Zod Request Validation<br/>(Profile, Tasks, Reminders, Plans, Chat)"]
+    end
+
+    subgraph RoutingLayer ["Routing Tier (/api)"]
+        AuthRoute["Auth Routes (/api/auth)"]
+        WorkspaceRoute["Workspace Routes (/api/tasks, reminders, plans)"]
+        AIRoute["AI Routes (/api/ai/chat, stream, modes)"]
+        RAGRoute["RAG Routes (/api/rag/index, query)"]
+        DocsRoute["OpenAPI & Swagger UI (/api/docs)"]
+    end
+
+    subgraph AgentLoopLayer ["AI Orchestration & Function Calling Loop"]
+        Orchestrator["AI Orchestrator<br/>(Context Builder & Mode Routing)"]
+        Loop["ReAct Agent Loop<br/>(Plan → Act → Observe → Synthesize)"]
+        
+        subgraph ToolDeclarations ["Domain Function Declarations"]
+            T1["createTask"]
+            T2["addReminder"]
+            T3["createDailyPlan"]
+            T4["searchProject"]
+            T5["queryDocuments"]
+        end
+
+        subgraph ModelProviders ["Provider Abstraction Layer"]
+            Gemini["Gemini 3 Flash<br/>(Native Tool Calling & SSE Tokens)"]
+            DemoFallback["Deterministic Provider<br/>(Offline & CI Fallback)"]
+        end
+    end
+
+    subgraph PersistenceLayer ["Persistence Layer"]
+        SQLite[("SQLite Database (better-sqlite3)<br/>WAL Mode & Auto Migrations")]
+        VectorStore["RAG Neural Vectors<br/>(3072D Cosine Scan)"]
+        InMemory["In-Memory Fallback<br/>(Zero-Config Dev Mode)"]
+    end
+
+    Client --> Helmet
+    Helmet --> RateLimit
+    RateLimit --> Cors
+    Cors --> ZodValidation
+    ZodValidation --> RoutingLayer
+
+    AIRoute --> Orchestrator
+    Orchestrator --> Loop
+    Loop --> ToolDeclarations
+    Loop --> ModelProviders
+    ModelProviders --> Gemini
+    ModelProviders --> DemoFallback
+
+    ToolDeclarations --> PersistenceLayer
+    AuthRoute --> SQLite
+    WorkspaceRoute --> SQLite
+    RAGRoute --> VectorStore
+    VectorStore --> SQLite
+    SQLite -.->|Fallback if no DATABASE_URL| InMemory
+
+    ModelProviders -->|Stream SSE / JSON Response| Client
+```
 
 - **AI Orchestration**: Built-in multi-mode orchestrator supporting streaming responses (SSE) with Gemini 3 Flash / Flash Lite, native function calling, and resilient fallbacks.
 - **Persistence Layer**: Embedded SQLite database via `better-sqlite3` with WAL mode, automated SQL migrations, restart survival, and honest in-memory fallback.
-- **Security & RBAC**: Stateless JWT access tokens with refresh token rotation and bcrypt-hashed credentials.
+- **Security & RBAC**: Stateless JWT access tokens with refresh token rotation, bcrypt-hashed credentials, Helmet security headers, and strict Zod schema validation.
 - **Performance Caching**: Tiered in-memory / Redis cache for fast metric and dashboard aggregation.
-- **Observability**: Distributed tracing via OpenTelemetry, real-time error capture via Sentry, and high-throughput structured logging with Pino.
+- **Observability**: Distributed tracing via OpenTelemetry, real-time error capture via Sentry, and Pino structured logging.
 - **Asynchronous Processing**: Background job ingestion for asynchronous summaries and report generation.
 
 ---
@@ -186,32 +252,51 @@ Lavoro integrates production-grade observability out of the box:
 
 ## API Reference
 
+> [!TIP]
+> **Interactive OpenAPI / Swagger UI Documentation**:
+> Explore and test every endpoint interactively in your browser at [`/api/docs`](http://localhost:10000/api/docs).
+> The raw OpenAPI 3.0.3 specification is accessible at [`/api/openapi.json`](http://localhost:10000/api/openapi.json).
+
 ### Authentication
-- `POST /api/auth/login` — Authenticate user and receive `{ accessToken, refreshToken, user }`.
+- `POST /api/auth/login` — Authenticate user and receive `{ accessToken, refreshToken, user }`. Rate limited to 5 req/min.
 - `POST /api/auth/refresh` — Rotate refresh token and receive a fresh token pair.
 - `GET /api/auth/me` — Retrieve current authenticated user profile (requires `Authorization: Bearer <token>`).
 
 ### AI & Assistant
-- `POST /api/ai/chat` — Send a message and get an aggregated AI response.
-- `POST /api/ai/stream` — Real-time Server-Sent Events (SSE) streaming chat.
-- `GET /api/ai/modes` — List available assistant modes.
+- `POST /api/ai/chat` — Send a message and execute iterative agent tool loop with natural-language synthesis.
+- `POST /api/ai/stream` — Real-time Server-Sent Events (SSE) streaming with tool-first event ordering.
+- `GET /api/ai/modes` — List available assistant modes (briefing, planner, tasks, email, summary).
 - `POST /api/ai/daily-summary` — Generate an executive summary and productivity score.
+
+### Workspace & Productivity
+- `GET /api/tasks`, `POST /api/tasks` — List and create priority-ranked tasks (Zod validated).
+- `GET /api/reminders`, `POST /api/reminders` — Schedule and retrieve time-bound reminders.
+- `GET /api/plans`, `POST /api/plans` — Generate and query time-blocked schedule plans.
+- `GET /api/profile`, `POST /api/profile` — Retrieve and update user work hours and focus areas.
+- `GET /api/conversations`, `POST /api/reset` — View chat history and reset session state.
 
 ### Dashboard & Analytics
 - `GET /api/dashboard/summary` — Cached summary metrics (task counts, completion rates, priorities).
 
 ### Knowledge & RAG
-- `POST /api/rag/index` — Ingest and index documents.
-- `POST /api/rag/query` — Retrieve relevant documents for a query.
+- `POST /api/rag/index` — Split documents with sliding windows and index 3072D Gemini neural vectors into SQLite.
+- `POST /api/rag/query` — Semantic cosine similarity retrieval across indexed knowledge chunks.
 
 ### Jobs & Integrations
 - `POST /api/jobs` — Enqueue an asynchronous background job.
 - `GET /api/jobs/:id` — Query status of a background job.
-- `GET /api/integrations/connectors` — List active third-party integrations.
-- `POST /api/integrations/webhooks/:provider` — Ingest webhooks (e.g. Slack).
+- `GET /api/integrations/connectors` — List active third-party integrations (Google Calendar, Slack).
+- `POST /api/integrations/webhooks/:provider` — Ingest external webhooks.
 
-### System
+### Project Scanner
+- `GET /api/project/structure` — Safely crawl workspace directory structure skipping ignored folders.
+- `GET /api/project/file` — Read workspace source files with path traversal security guards.
+- `GET /api/project/search` — Search workspace text files for code references.
+
+### System & Documentation
 - `GET /api/health` — Service health check, model configuration, and backend status.
+- `GET /api/docs` — Interactive Swagger UI API explorer.
+- `GET /api/openapi.json` — Machine-readable OpenAPI 3.0.3 specification.
 
 ---
 

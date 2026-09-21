@@ -340,3 +340,16 @@ test("chat streaming endpoint yields Server-Sent Events", async () => {
 	assert.match(response.headers["content-type"], /text\/event-stream/);
 	assert.match(response.text, /data:/);
 });
+
+test("OpenAPI spec and Swagger UI interactive documentation endpoints", async () => {
+	const specRes = await request(app).get("/api/openapi.json");
+	assert.equal(specRes.status, 200);
+	assert.equal(specRes.body.openapi, "3.0.3");
+	assert.ok(specRes.body.paths["/api/ai/chat"]);
+	assert.ok(specRes.body.paths["/api/auth/login"]);
+
+	const docsRes = await request(app).get("/api/docs");
+	assert.equal(docsRes.status, 200);
+	assert.match(docsRes.text, /swagger-ui/);
+	assert.match(docsRes.text, /Lavoro API Documentation/);
+});

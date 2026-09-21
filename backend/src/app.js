@@ -95,7 +95,11 @@ app.use(
 		contentSecurityPolicy: {
 			directives: {
 				defaultSrc: ["'self'"],
-				scriptSrc: ["'self'", "'unsafe-inline'"],
+				scriptSrc: [
+					"'self'",
+					"'unsafe-inline'",
+					"https://cdnjs.cloudflare.com",
+				],
 				styleSrc: [
 					"'self'",
 					"'unsafe-inline'",
@@ -148,6 +152,44 @@ if (!process.env.BENCHMARK_MODE) {
 }
 app.use("/api", apiRoutes);
 app.use(express.static(frontendDir));
+
+const openapiSpec = require("./docs/openapi.json");
+
+app.get("/api/openapi.json", (req, res) => {
+	res.json(openapiSpec);
+});
+
+app.get("/api/docs", (req, res) => {
+	res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Lavoro API Documentation</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css">
+	<style>
+		body { margin: 0; background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+		.swagger-ui .topbar { display: none; }
+		.swagger-ui { max-width: 1200px; margin: 0 auto; padding: 24px; }
+		.swagger-ui .info .title { color: #f8fafc; }
+		.swagger-ui .info p, .swagger-ui .info li { color: #94a3b8; }
+	</style>
+</head>
+<body>
+	<div id="swagger-ui"></div>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js"></script>
+	<script>
+		SwaggerUIBundle({
+			url: '/api/openapi.json',
+			dom_id: '#swagger-ui',
+			deepLinking: true,
+			presets: [SwaggerUIBundle.presets.apis],
+			layout: 'BaseLayout'
+		});
+	</script>
+</body>
+</html>`);
+});
 
 app.get("/api/health", (req, res) => {
 	res.json({

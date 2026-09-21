@@ -1,0 +1,486 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Lavoro Daily Assistant API",
+		"version": "1.0.0",
+		"description": "Production-grade REST and streaming API for Lavoro: AI Personal Daily Productivity Assistant.",
+		"contact": {
+			"name": "Lavoro Engineering"
+		}
+	},
+	"servers": [
+		{
+			"url": "/",
+			"description": "Current Environment Server"
+		}
+	],
+	"tags": [
+		{ "name": "System", "description": "Service health and diagnostics" },
+		{ "name": "Authentication", "description": "JWT authentication and refresh token rotation" },
+		{ "name": "AI Assistant", "description": "Conversational agent, streaming ReAct loop, and executive summaries" },
+		{ "name": "Workspace", "description": "Tasks, reminders, daily plans, profile, and conversation state" },
+		{ "name": "RAG Knowledge", "description": "3072D neural vector document indexing and semantic retrieval" },
+		{ "name": "Background Jobs", "description": "Asynchronous job ingestion and status polling" },
+		{ "name": "Integrations", "description": "Third-party calendar, email, and chat connectors" },
+		{ "name": "Project Scanner", "description": "Secure workspace tree inspection and code search" }
+	],
+	"paths": {
+		"/api/health": {
+			"get": {
+				"tags": ["System"],
+				"summary": "Health status probe",
+				"description": "Returns backend operational status, model configuration, and persistence health.",
+				"responses": {
+					"200": {
+						"description": "Service is healthy",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"status": { "type": "string", "example": "healthy" },
+										"service": { "type": "string", "example": "Lavoro: Personal Daily Assistant" },
+										"database": { "type": "string", "example": "sqlite-persisted" },
+										"model": { "type": "string", "example": "gemini-3-flash-preview" }
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/auth/login": {
+			"post": {
+				"tags": ["Authentication"],
+				"summary": "Authenticate user credentials",
+				"description": "Authenticates user email and password, issuing a short-lived access token and rotating refresh token.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["email", "password"],
+								"properties": {
+									"email": { "type": "string", "format": "email", "example": "admin@example.com" },
+									"password": { "type": "string", "minLength": 8, "example": "admin12345" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Authentication successful, returns tokens and user profile" },
+					"400": { "description": "Validation error" },
+					"401": { "description": "Invalid credentials" },
+					"429": { "description": "Rate limited (exceeded 5 attempts/minute)" }
+				}
+			}
+		},
+		"/api/auth/refresh": {
+			"post": {
+				"tags": ["Authentication"],
+				"summary": "Rotate refresh token",
+				"description": "Performs atomic single-use refresh token rotation, invalidating previous refresh tokens.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["refreshToken"],
+								"properties": {
+									"refreshToken": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Fresh access and refresh tokens returned" },
+					"401": { "description": "Invalid, expired, or revoked refresh token" }
+				}
+			}
+		},
+		"/api/auth/me": {
+			"get": {
+				"tags": ["Authentication"],
+				"summary": "Retrieve authenticated user details",
+				"security": [{ "BearerAuth": [] }],
+				"responses": {
+					"200": { "description": "Authenticated user object" },
+					"401": { "description": "Missing, expired, or tampered token" }
+				}
+			}
+		},
+		"/api/ai/chat": {
+			"post": {
+				"tags": ["AI Assistant"],
+				"summary": "Send message to AI agent",
+				"description": "Executes the multi-turn function calling agent loop, invoking domain tools (tasks, reminders, plans, RAG, project search) autonomously.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["message"],
+								"properties": {
+									"message": { "type": "string", "example": "Add a high priority task to review Q4 roadmap" },
+									"mode": { "type": "string", "enum": ["assistant", "briefing", "planner", "tasks", "email", "summary"] },
+									"sessionId": { "type": "string", "example": "session-123" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Agent response and tool execution audit list" },
+					"400": { "description": "Validation error" }
+				}
+			}
+		},
+		"/api/ai/stream": {
+			"post": {
+				"tags": ["AI Assistant"],
+				"summary": "Stream agent responses via SSE",
+				"description": "Server-Sent Events endpoint emitting tool execution events first, followed by incremental text chunks.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["message"],
+								"properties": {
+									"message": { "type": "string", "example": "Prepare my morning briefing" },
+									"mode": { "type": "string" },
+									"sessionId": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "SSE stream with event types: tool, chunk, done, error",
+						"content": { "text/event-stream": {} }
+					}
+				}
+			}
+		},
+		"/api/ai/modes": {
+			"get": {
+				"tags": ["AI Assistant"],
+				"summary": "List available productivity modes",
+				"responses": {
+					"200": { "description": "List of supported modes and their system prompts" }
+				}
+			}
+		},
+		"/api/ai/daily-summary": {
+			"post": {
+				"tags": ["AI Assistant"],
+				"summary": "Generate daily executive productivity summary",
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"tasks": { "type": "array", "items": { "type": "object" } },
+									"notes": { "type": "array", "items": { "type": "string" } },
+									"goals": { "type": "array", "items": { "type": "string" } }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Daily executive summary and productivity score (0-100)" }
+				}
+			}
+		},
+		"/api/tasks": {
+			"get": {
+				"tags": ["Workspace"],
+				"summary": "List active tasks",
+				"responses": {
+					"200": { "description": "Array of workspace tasks" }
+				}
+			},
+			"post": {
+				"tags": ["Workspace"],
+				"summary": "Create new task",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["title"],
+								"properties": {
+									"title": { "type": "string", "example": "Prepare board presentation" },
+									"priority": { "type": "string", "enum": ["high", "medium", "low"], "default": "medium" },
+									"due": { "type": "string", "default": "today" },
+									"category": { "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Updated task collection" },
+					"400": { "description": "Validation error" }
+				}
+			}
+		},
+		"/api/reminders": {
+			"get": {
+				"tags": ["Workspace"],
+				"summary": "List scheduled reminders",
+				"responses": {
+					"200": { "description": "Array of active reminders" }
+				}
+			},
+			"post": {
+				"tags": ["Workspace"],
+				"summary": "Add scheduled reminder",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["title"],
+								"properties": {
+									"title": { "type": "string", "example": "Submit budget report" },
+									"when": { "type": "string", "example": "today 17:00" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Updated reminders list" },
+					"400": { "description": "Validation error" }
+				}
+			}
+		},
+		"/api/plans": {
+			"get": {
+				"tags": ["Workspace"],
+				"summary": "List generated time-block plans",
+				"responses": {
+					"200": { "description": "Array of daily plans" }
+				}
+			},
+			"post": {
+				"tags": ["Workspace"],
+				"summary": "Generate time-blocked daily plan",
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"prompt": { "type": "string", "example": "Focus on deep work before lunch" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Constructed daily plan" }
+				}
+			}
+		},
+		"/api/profile": {
+			"get": {
+				"tags": ["Workspace"],
+				"summary": "Retrieve user workspace profile",
+				"responses": {
+					"200": { "description": "Profile settings and focus areas" }
+				}
+			},
+			"post": {
+				"tags": ["Workspace"],
+				"summary": "Update user workspace profile",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"name": { "type": "string" },
+									"role": { "type": "string" },
+									"timezone": { "type": "string" },
+									"workingHours": { "type": "string" },
+									"goal": { "type": "string" },
+									"focusAreas": { "type": "array", "items": { "type": "string" } }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Updated profile object" },
+					"400": { "description": "Validation error" }
+				}
+			}
+		},
+		"/api/rag/index": {
+			"post": {
+				"tags": ["RAG Knowledge"],
+				"summary": "Index documents into semantic knowledge base",
+				"description": "Splits documents into overlapping sliding-window chunks and generates 3072D neural vectors via Gemini.",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["documents"],
+								"properties": {
+									"documents": {
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": ["id", "content"],
+											"properties": {
+												"id": { "type": "string" },
+												"content": { "type": "string" }
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Number of indexed chunks returned" }
+				}
+			}
+		},
+		"/api/rag/query": {
+			"post": {
+				"tags": ["RAG Knowledge"],
+				"summary": "Perform semantic vector retrieval",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["query"],
+								"properties": {
+									"query": { "type": "string", "example": "What are our project deadlines?" },
+									"limit": { "type": "integer", "default": 5 }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": { "description": "Ranked list of matching document chunks with similarity scores" }
+				}
+			}
+		},
+		"/api/jobs": {
+			"post": {
+				"tags": ["Background Jobs"],
+				"summary": "Enqueue background processing job",
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"required": ["type"],
+								"properties": {
+									"type": { "type": "string", "enum": ["daily-summary", "email-digest", "report-generation"] },
+									"payload": { "type": "object" }
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"202": { "description": "Job queued with assigned ID" }
+				}
+			}
+		},
+		"/api/jobs/{jobId}": {
+			"get": {
+				"tags": ["Background Jobs"],
+				"summary": "Poll background job status",
+				"parameters": [
+					{ "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } }
+				],
+				"responses": {
+					"200": { "description": "Current status (queued, running, completed, failed)" },
+					"404": { "description": "Job not found" }
+				}
+			}
+		},
+		"/api/integrations/connectors": {
+			"get": {
+				"tags": ["Integrations"],
+				"summary": "List supported third-party connectors",
+				"responses": {
+					"200": { "description": "Connector list with configuration status" }
+				}
+			}
+		},
+		"/api/project/structure": {
+			"get": {
+				"tags": ["Project Scanner"],
+				"summary": "Scan workspace directory tree",
+				"responses": {
+					"200": { "description": "File list and summary metrics" }
+				}
+			}
+		},
+		"/api/project/file": {
+			"get": {
+				"tags": ["Project Scanner"],
+				"summary": "Read project file safely",
+				"parameters": [
+					{ "name": "path", "in": "query", "required": true, "schema": { "type": "string" } }
+				],
+				"responses": {
+					"200": { "description": "File content and size" },
+					"400": { "description": "Path traversal rejected or non-file" }
+				}
+			}
+		},
+		"/api/project/search": {
+			"get": {
+				"tags": ["Project Scanner"],
+				"summary": "Search workspace text files",
+				"parameters": [
+					{ "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }
+				],
+				"responses": {
+					"200": { "description": "Matching lines with preview snippets" }
+				}
+			}
+		}
+	},
+	"components": {
+		"securitySchemes": {
+			"BearerAuth": {
+				"type": "http",
+				"scheme": "bearer",
+				"bearerFormat": "JWT",
+				"description": "Enter your JWT Bearer token obtained from /api/auth/login"
+			}
+		}
+	}
+}
