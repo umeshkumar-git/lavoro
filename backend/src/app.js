@@ -70,7 +70,7 @@ if (primaryProvider.isConfigured()) {
 	logger.warn("GEMINI_API_KEY is not set. Lavoro will use demo responses.");
 }
 
-const { seedUsers } = require("../scripts/seed");
+const { seedUsers } = require("../../scripts/seed");
 if (process.env.NODE_ENV !== "production") {
 	seedUsers().catch((error) => {
 		logger.error({ error }, "Failed to auto-seed demo accounts");

@@ -85,26 +85,27 @@ function ensureDbSession(db, sessionId) {
 		`).run(sessionId, JSON.stringify(DEFAULT_PROFILE), now, now);
 
 		const insertTask = db.prepare(`
-			INSERT INTO tasks (id, session_id, title, priority, status, due, category, created_at)
+			INSERT OR IGNORE INTO tasks (id, session_id, title, priority, status, due, category, created_at)
 			VALUES (@id, @sessionId, @title, @priority, @status, @due, @category, @createdAt)
 		`);
 		for (let i = 0; i < DEFAULT_TASKS.length; i++) {
 			const task = DEFAULT_TASKS[i];
 			insertTask.run({
 				...task,
+				id: sessionId === "default" ? task.id : `${sessionId}-${task.id}`,
 				sessionId,
 				createdAt: new Date(Date.now() - (DEFAULT_TASKS.length - i) * 1000).toISOString(),
 			});
 		}
 
 		const insertReminder = db.prepare(`
-			INSERT INTO reminders (id, session_id, title, when_time, done, created_at)
+			INSERT OR IGNORE INTO reminders (id, session_id, title, when_time, done, created_at)
 			VALUES (@id, @sessionId, @title, @whenTime, @done, @createdAt)
 		`);
 		for (let i = 0; i < DEFAULT_REMINDERS.length; i++) {
 			const rem = DEFAULT_REMINDERS[i];
 			insertReminder.run({
-				id: rem.id,
+				id: sessionId === "default" ? rem.id : `${sessionId}-${rem.id}`,
 				sessionId,
 				title: rem.title,
 				whenTime: rem.when,
