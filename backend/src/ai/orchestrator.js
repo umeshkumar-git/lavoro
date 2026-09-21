@@ -1,7 +1,7 @@
 const { buildAssistantContext } = require("./context");
-const { detectMode, normalizeLevel, normalizeTeachingStyle } = require("./modes");
+const { detectMode } = require("./modes");
 const { buildPrompt } = require("./prompts");
-const { addMemory, appendMessage, getProfile } = require("../data/store");
+const { addMemory, appendMessage } = require("../data/store");
 
 const MAX_MESSAGE_LENGTH = 24_000;
 const MAX_ATTACHMENTS = 4;
@@ -39,8 +39,6 @@ class AIOrchestrator {
 			success: true,
 			message: result.text,
 			mode: prepared.mode,
-			level: prepared.level,
-			teachingStyle: prepared.teachingStyle,
 			model: result.model,
 			latencyMs: Date.now() - startedAt,
 		};
@@ -84,8 +82,6 @@ class AIOrchestrator {
 		yield {
 			type: "done",
 			mode: prepared.mode,
-			level: prepared.level,
-			teachingStyle: prepared.teachingStyle,
 			model,
 			latencyMs: Date.now() - startedAt,
 		};
@@ -95,18 +91,12 @@ class AIOrchestrator {
 		const message = validateMessage(request.message);
 		const attachments = validateAttachments(request.attachments);
 		const mode = detectMode(message, request.mode);
-		const level = normalizeLevel(request.level || getProfile(request.sessionId).experienceLevel);
-		const teachingStyle = normalizeTeachingStyle(
-			request.teachingStyle || getProfile(request.sessionId).preferredStyle,
-		);
 		const projectStructure = request.includeProject
 			? await this.getProjectStructure()
 			: null;
 		const context = buildAssistantContext({
 			sessionId: request.sessionId,
 			mode,
-			level,
-			teachingStyle,
 			projectStructure,
 			attachments,
 			dailyAssistantContext: validateDailyAssistantContext(
@@ -118,10 +108,8 @@ class AIOrchestrator {
 			sessionId: request.sessionId,
 			message,
 			mode,
-			level,
-			teachingStyle,
 			prompt: buildPrompt({ message, context }),
-			metadata: { mode, level, teachingStyle, message },
+			metadata: { mode, message },
 		};
 	}
 
@@ -136,7 +124,7 @@ class AIOrchestrator {
 			content: assistantText,
 			mode: prepared.mode,
 		});
-		recordLearningMemory(prepared.sessionId, prepared.message, prepared.mode);
+		recordProductivityMemory(prepared.sessionId, prepared.message, prepared.mode);
 	}
 }
 
@@ -205,24 +193,24 @@ function sanitizeList(items, limit) {
 	});
 }
 
-function recordLearningMemory(sessionId, message, mode) {
+function recordProductivityMemory(sessionId, message, mode) {
 	const lower = message.toLowerCase();
-	const weakTopicMatches = [
-		"async",
-		"promise",
-		"react",
-		"recursion",
-		"database",
-		"sql",
-		"api",
-		"system design",
-	].filter((topic) => lower.includes(topic));
+	const priorityKeywords = [
+		"focus",
+		"priority",
+		"deadline",
+		"urgent",
+		"schedule",
+		"routine",
+		"habit",
+		"goal",
+	].filter((keyword) => lower.includes(keyword));
 
-	if (weakTopicMatches.length > 0 || mode === "debug" || mode === "review") {
+	if (priorityKeywords.length > 0 || mode === "planner" || mode === "tasks") {
 		addMemory(sessionId, {
-			type: mode === "debug" ? "debugging" : "learning",
-			summary: `Student asked about ${weakTopicMatches.join(", ") || mode}.`,
-			topics: weakTopicMatches,
+			type: "productivity-preference",
+			summary: `User engaged on ${priorityKeywords.join(", ") || mode} planning.`,
+			keywords: priorityKeywords,
 		});
 	}
 }

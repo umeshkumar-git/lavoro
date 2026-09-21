@@ -1,73 +1,97 @@
 const AI_MODES = {
-	learn: {
-		label: "Learn",
-		description: "Teach concepts with examples, mental models, mistakes, and exercises.",
-		keywords: ["learn", "teach", "explain", "concept", "understand", "what is"],
+	assistant: {
+		label: "Daily Assistant",
+		description:
+			"Executive personal concierge for scheduling, drafting, questions, and daily priorities.",
+		keywords: ["assistant", "help", "what", "how", "organize", "notes", "draft"],
 		responseGuide:
-			"Use: simple explanation, mental model, example, common mistakes, practical example, small exercise, optional deeper explanation.",
+			"Be concise, actionable, and structured. Clarify priorities, cite connected data, and offer direct next steps.",
 	},
-	debug: {
-		label: "Debug",
-		description: "Diagnose errors from symptoms, logs, stack traces, and code.",
-		keywords: ["debug", "error", "stack", "bug", "broken", "failing", "exception"],
-		responseGuide:
-			"Separate confirmed, likely, and possible causes. Ask for missing evidence when needed. Provide the smallest useful fix and prevention advice.",
-	},
-	review: {
-		label: "Code Review",
-		description: "Review code for correctness, maintainability, performance, security, architecture, and tests.",
-		keywords: ["review", "code review", "refactor", "feedback", "edge case"],
-		responseGuide:
-			"Lead with findings by severity: Critical, High, Medium, Low, Suggestion. Avoid style-only criticism unless it affects maintainability.",
-	},
-	pair: {
-		label: "Pair Programmer",
-		description: "Design and implement incrementally with explanations.",
-		keywords: ["build", "implement", "pair", "feature", "write code", "create"],
-		responseGuide:
-			"Break work into small steps, explain decisions, give code only when it is useful, and mention tests or validation.",
-	},
-	project: {
-		label: "Project Mentor",
-		description: "Turn project ideas into specs, architecture, milestones, and execution plans.",
-		keywords: ["project", "milestone", "architecture", "roadmap", "full-stack", "spec"],
-		responseGuide:
-			"Clarify product goals, functional and non-functional requirements, architecture, APIs, data model, testing, deployment, and milestones.",
-	},
-	interview: {
-		label: "Interview",
-		description: "Run interview practice without revealing answers too early.",
-		keywords: ["interview", "dsa", "system design interview", "question", "leetcode"],
-		responseGuide:
-			"Act like an interviewer. Ask one question, let the student answer, evaluate, score, and then give targeted improvement advice.",
-	},
-	systemDesign: {
-		label: "System Design",
-		description: "Teach scalable architecture reasoning from requirements to tradeoffs.",
-		keywords: ["system design", "design youtube", "design instagram", "scale", "distributed"],
-		responseGuide:
-			"Guide through requirements, scale, APIs, data model, caching, queues, storage, reliability, observability, security, and tradeoffs.",
-	},
-	planner: {
-		label: "Daily Planner",
-		description: "Plan the day with calendar, email, tasks, reminders, and focus blocks.",
+	briefing: {
+		label: "Morning Briefing",
+		description:
+			"Start-of-day executive briefing: weather, calendar schedule, urgent emails, and top tasks.",
 		keywords: [
-			"plan my day",
-			"meetings",
-			"calendar",
-			"email",
-			"priority",
-			"task",
-			"schedule",
+			"briefing",
+			"morning briefing",
+			"morning",
+			"agenda",
+			"today's overview",
+			"start my day",
+			"daily briefing",
 		],
 		responseGuide:
-			"Summarize the day, identify urgent items, recommend a sequence of work, and keep schedule suggestions realistic.",
+			"Deliver a polished briefing highlighting weather conditions, calendar events, unread high-priority emails, and key tasks to tackle first.",
+	},
+	planner: {
+		label: "Day Planner",
+		description:
+			"Time-blocked daily schedule, meeting preparation, and dedicated focus intervals.",
+		keywords: [
+			"plan my day",
+			"planner",
+			"time block",
+			"schedule",
+			"calendar",
+			"meetings",
+			"deep work",
+			"focus block",
+		],
+		responseGuide:
+			"Construct a realistic, time-blocked schedule with deep work blocks, buffer times, and meeting prep based on existing calendar commitments and tasks.",
+	},
+	tasks: {
+		label: "Task Prioritization",
+		description:
+			"Prioritize tasks using the Eisenhower Matrix, break down projects, and sequence next actions.",
+		keywords: [
+			"task",
+			"tasks",
+			"prioritize",
+			"to-do",
+			"todo",
+			"action items",
+			"urgent",
+			"eisenhower",
+		],
+		responseGuide:
+			"Categorize tasks by urgency and impact, recommend immediate next steps, and suggest optimal sequencing.",
+	},
+	email: {
+		label: "Email Triage",
+		description:
+			"Summarize inbox messages, identify urgent items, and draft concise responses.",
+		keywords: [
+			"email",
+			"emails",
+			"inbox",
+			"triage",
+			"draft reply",
+			"unread messages",
+			"sender",
+		],
+		responseGuide:
+			"Highlight senders, subjects, urgency, core requests, and suggested responses or next actions.",
+	},
+	summary: {
+		label: "Executive Summary",
+		description:
+			"End-of-day retrospective, completed accomplishments, carried-over items, and productivity scoring.",
+		keywords: [
+			"summary",
+			"daily summary",
+			"retrospective",
+			"wrap up",
+			"end of day",
+			"score",
+			"productivity score",
+		],
+		responseGuide:
+			"Summarize achievements, list remaining items, celebrate focus milestones, and provide an objective productivity assessment.",
 	},
 };
 
-const DEFAULT_MODE = "learn";
-const VALID_LEVELS = new Set(["beginner", "intermediate", "advanced", "interview"]);
-const VALID_TEACHING_STYLES = new Set(["socratic", "direct", "beginner", "expert"]);
+const DEFAULT_MODE = "assistant";
 
 function normalizeMode(mode) {
 	if (mode && AI_MODES[mode]) return mode;
@@ -87,19 +111,9 @@ function detectMode(message, requestedMode) {
 	return match ? match[0] : DEFAULT_MODE;
 }
 
-function normalizeLevel(level) {
-	return VALID_LEVELS.has(level) ? level : "intermediate";
-}
-
-function normalizeTeachingStyle(style) {
-	return VALID_TEACHING_STYLES.has(style) ? style : "direct";
-}
-
 module.exports = {
 	AI_MODES,
 	DEFAULT_MODE,
 	detectMode,
-	normalizeLevel,
 	normalizeMode,
-	normalizeTeachingStyle,
 };

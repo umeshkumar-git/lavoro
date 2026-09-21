@@ -383,19 +383,14 @@ function handleAssistantToolRequest(request = {}, sessionId) {
 function sanitizeProfile(input = {}) {
 	const safe = {};
 	const stringFields = [
-		"experienceLevel",
+		"name",
+		"role",
+		"timezone",
+		"workingHours",
 		"goal",
-		"currentProject",
-		"studyTime",
-		"targetRole",
-		"preferredStyle",
+		"preferredSummaryStyle",
 	];
-	const listFields = [
-		"languages",
-		"technologies",
-		"strongTopics",
-		"weakTopics",
-	];
+	const listFields = ["focusAreas"];
 
 	for (const field of stringFields) {
 		if (typeof input[field] === "string") {

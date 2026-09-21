@@ -3,45 +3,53 @@ const MAX_HISTORY_MESSAGES = 24;
 const DEFAULT_TASKS = [
 	{
 		id: "task-demo-1",
-		title: "Review authentication flow",
+		title: "Review daily schedule and prioritize urgent emails",
 		priority: "high",
 		status: "in-progress",
 		due: "today",
-		category: "project",
+		category: "planning",
 	},
 	{
 		id: "task-demo-2",
-		title: "Practice async JavaScript patterns",
+		title: "Prepare briefing notes for client review call",
+		priority: "high",
+		status: "queued",
+		due: "today",
+		category: "meetings",
+	},
+	{
+		id: "task-demo-3",
+		title: "Review team productivity metrics and project deliverables",
 		priority: "medium",
 		status: "queued",
 		due: "tomorrow",
-		category: "learning",
+		category: "review",
 	},
 ];
 
 const DEFAULT_REMINDERS = [
 	{
 		id: "reminder-demo-1",
-		title: "Submit weekly mentor summary",
-		when: "tomorrow 18:00",
+		title: "Team Standup at 09:00 AM",
+		when: "today 09:00",
+		done: false,
+	},
+	{
+		id: "reminder-demo-2",
+		title: "Review end-of-day productivity summary",
+		when: "today 18:00",
 		done: false,
 	},
 ];
 
 const DEFAULT_PROFILE = {
-	experienceLevel: "intermediate",
-	languages: ["JavaScript"],
-	technologies: ["HTML", "CSS", "Node.js"],
-	goal: "Become a professional software engineer",
-	currentProject: "Developer Mentor AI",
-	studyTime: "45 minutes per day",
-	targetRole: "Full-stack developer",
-	preferredStyle: "direct",
-	strongTopics: [],
-	weakTopics: [],
-	completedLessons: [],
-	interviewScores: [],
-	codingMistakes: [],
+	name: "Umesh Kumar",
+	role: "Professional",
+	timezone: "Asia/Kolkata",
+	workingHours: "09:00 - 18:00",
+	goal: "Execute daily priorities efficiently and maintain focus",
+	focusAreas: ["Deep Work", "Project Delivery", "Communication"],
+	preferredSummaryStyle: "concise",
 };
 
 const sessions = new Map();
@@ -77,19 +85,7 @@ function updateProfile(sessionId, updates) {
 	const nextProfile = {
 		...session.profile,
 		...updates,
-		languages: normalizeList(updates.languages, session.profile.languages),
-		technologies: normalizeList(
-			updates.technologies,
-			session.profile.technologies,
-		),
-		strongTopics: normalizeList(
-			updates.strongTopics,
-			session.profile.strongTopics,
-		),
-		weakTopics: normalizeList(
-			updates.weakTopics,
-			session.profile.weakTopics,
-		),
+		focusAreas: normalizeList(updates.focusAreas, session.profile.focusAreas),
 	};
 
 	session.profile = nextProfile;
@@ -153,7 +149,7 @@ function addReminder(sessionId, reminder) {
 	const nextReminder = {
 		id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
 		title: String(reminder?.title || "Reminder").trim(),
-		when: reminder?.when || "tomorrow 09:00",
+		when: reminder?.when || "today 18:00",
 		done: Boolean(reminder?.done),
 	};
 
@@ -175,7 +171,7 @@ function createDailyPlan(sessionId, prompt = "") {
 	const focus = tasks.slice(0, 3);
 	const summary = focus.length
 		? `Focus on ${focus.map((task) => task.title).join(", ")}.`
-		: "Take time to review your current goals and keep a short, realistic build block.";
+		: "Plan your day around your core commitments and dedicated deep work intervals.";
 
 	const plan = {
 		id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,

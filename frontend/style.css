@@ -150,6 +150,14 @@ textarea:focus-visible {
 	overflow-wrap: anywhere;
 }
 
+.header-subtitle {
+	margin: 6px 0 0;
+	font-size: clamp(0.85rem, 1.5vw, 1.05rem);
+	line-height: 1.4;
+	color: rgba(255, 255, 255, 0.9);
+	font-weight: 500;
+}
+
 .health-badge {
 	flex: 0 0 auto;
 	display: inline-flex;

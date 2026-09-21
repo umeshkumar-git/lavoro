@@ -582,7 +582,7 @@ async function readStream(body, messageElement) {
 
 function addWelcomeMessage() {
 	addMessage(
-		"Good morning. I can summarize your meetings, scan priorities, help plan focus blocks, or answer anything about your day.",
+		"Good morning! I am Lavoro, your AI personal daily assistant. I can run your morning briefing, prioritize tasks with the Eisenhower matrix, triage urgent emails, and structure your focus blocks for today.",
 		"assistant",
 		{ model: "lavoro" },
 	);

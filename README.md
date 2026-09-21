@@ -56,7 +56,7 @@ lavoro/
 │       ├── app.js              # Express app definition, middleware, static hosting
 │       ├── ai/
 │       │   ├── context.js      # Context window builder & session summarization
-│       │   ├── modes.js        # Assistant modes (general, planner, coding, etc.)
+│       │   ├── modes.js        # Productivity modes (assistant, briefing, planner, tasks, email, summary)
 │       │   ├── orchestrator.js # Orchestration between primary LLM and demo fallback
 │       │   ├── prompts.js      # System prompt templates
 │       │   └── providers.js    # Gemini SDK provider & mock DemoProvider
@@ -106,10 +106,16 @@ lavoro/
 
 ## Core Features
 
-1. **Streaming Chat & Assistant Modes**:
+1. **Streaming Chat & Productivity Modes**:
    - Natural language interaction with streaming server-sent events (`/api/ai/stream`).
-   - Domain-specific modes (briefing, deep work planning, task breakdown, retrospective).
-   - Graceful fallback: works out-of-the-box in demo mode even without an API key.
+   - Six specialized productivity modes:
+     - `assistant` (Default): General executive concierge for queries, notes, and day management.
+     - `briefing`: Comprehensive morning briefing (weather, scheduled meetings, urgent emails, top tasks).
+     - `planner`: Time-blocked schedule construction with dedicated deep-work blocks.
+     - `tasks`: Eisenhower Matrix task prioritization, breakdown, and next actions.
+     - `email`: Inbox triage, urgency ranking, and draft response generation.
+     - `summary`: End-of-day executive retrospectives and automated productivity scoring.
+   - Graceful fallback: works out-of-the-box in demo mode with rich productivity data even without an API key.
 
 2. **Executive Daily Summaries**:
    - Automated productivity scoring (0-100) and actionable daily summaries from tasks, notes, and goals.

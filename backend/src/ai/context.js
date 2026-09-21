@@ -7,26 +7,25 @@ const {
 	getTasks,
 } = require("../data/store");
 
+/**
+ * Builds the comprehensive productivity context for the AI agent.
+ */
 function buildAssistantContext({
 	sessionId,
 	mode,
-	level,
-	teachingStyle,
-	projectStructure,
+	projectStructure = null,
 	attachments = [],
 	dailyAssistantContext = null,
 }) {
 	const profile = getProfile(sessionId);
 	const history = getConversation(sessionId).slice(-12);
 	const memories = getMemories(sessionId).slice(0, 8);
-	const tasks = getTasks(sessionId).slice(0, 6);
-	const reminders = getReminders(sessionId).slice(0, 6);
+	const tasks = getTasks(sessionId).slice(0, 8);
+	const reminders = getReminders(sessionId).slice(0, 8);
 	const plans = getPlans(sessionId).slice(0, 3);
 
 	return {
 		mode,
-		level,
-		teachingStyle,
 		profile,
 		history,
 		memories,
