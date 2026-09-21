@@ -1,3 +1,5 @@
+const { TOOL_DECLARATIONS, formatToolMessage } = require("./tools");
+
 class GeminiProvider {
 	constructor({ apiKey, modelNames, GoogleGenerativeAI }) {
 		this.modelNames = modelNames;
@@ -8,75 +10,289 @@ class GeminiProvider {
 		return Boolean(this.client);
 	}
 
-	async generate(prompt) {
+	async runAgentLoop({ prompt, sessionId, maxIterations = 4, executeTool, onToolCall }) {
 		if (!this.client) return null;
 
 		let lastError = null;
 		for (const modelName of this.modelNames) {
 			try {
-				const model = this.client.getGenerativeModel({ model: modelName });
-				const result = await model.generateContent(prompt);
-				const response = await result.response;
-				return {
-					text: response.text(),
+				const model = this.client.getGenerativeModel({
 					model: modelName,
+					tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
+				});
+
+				const chat = model.startChat();
+				let response = await chat.sendMessage(prompt);
+				let iteration = 0;
+				const toolHistory = [];
+
+				while (iteration < maxIterations) {
+					const calls = response.response.functionCalls();
+					if (!calls || calls.length === 0) {
+						break;
+					}
+
+					const functionResponses = [];
+					for (const call of calls) {
+						const toolResult = await executeTool(call.name, call.args, { sessionId });
+						const toolEvent = {
+							tool: call.name,
+							args: call.args,
+							result: toolResult,
+							message: formatToolMessage(call.name, toolResult),
+						};
+
+						toolHistory.push(toolEvent);
+						if (onToolCall) {
+							onToolCall(toolEvent);
+						}
+
+						functionResponses.push({
+							functionResponse: {
+								name: call.name,
+								response: toolResult,
+							},
+						});
+					}
+
+					iteration++;
+					response = await chat.sendMessage(functionResponses);
+				}
+
+				return {
+					text: response.response.text(),
+					model: modelName,
+					tools: toolHistory,
 				};
 			} catch (error) {
 				lastError = error;
-				console.error(`Gemini request failed for ${modelName}:`, error.message);
+				console.error(`Gemini agent loop failed on ${modelName}:`, error.message);
 			}
 		}
 
-		throw lastError || new Error("No Gemini model was available.");
+		throw lastError || new Error("No Gemini model was available for agent execution.");
 	}
 
-	async *stream(prompt) {
+	async *streamAgentLoop({ prompt, sessionId, maxIterations = 4, executeTool }) {
 		if (!this.client) return;
 
-		let lastError = null;
-		for (const modelName of this.modelNames) {
-			try {
-				const model = this.client.getGenerativeModel({ model: modelName });
-				const result = await model.generateContentStream(prompt);
+		// Execute the agent tool loop first to gather all tool observations
+		const toolEvents = [];
+		const result = await this.runAgentLoop({
+			prompt,
+			sessionId,
+			maxIterations,
+			executeTool,
+			onToolCall: (event) => toolEvents.push(event),
+		});
 
-				for await (const chunk of result.stream) {
-					const text = chunk.text();
-					if (text) yield { text, model: modelName };
-				}
-
-				return;
-			} catch (error) {
-				lastError = error;
-				console.error(`Gemini stream failed for ${modelName}:`, error.message);
-			}
+		// Yield tool execution events first
+		for (const event of toolEvents) {
+			yield {
+				type: "tool",
+				tool: event.tool,
+				message: event.message,
+				result: event.result,
+			};
 		}
 
-		throw lastError || new Error("No Gemini streaming model was available.");
+		// Stream the final synthesized text response
+		const chunks = result.text.match(/.{1,60}(\s|$)/g) || [result.text];
+		for (const chunk of chunks) {
+			yield { type: "chunk", text: chunk, model: result.model };
+		}
 	}
 }
 
 class DemoProvider {
-	async generate(_, metadata) {
+	async runAgentLoop({ prompt, sessionId, executeTool, onToolCall, metadata = {} }) {
+		const message = String(metadata.message || prompt || "").trim();
+		const toolCall = detectToolIntent(message);
+		const toolHistory = [];
+
+		if (toolCall && executeTool) {
+			const toolResult = await executeTool(toolCall.name, toolCall.args, { sessionId });
+			const toolEvent = {
+				tool: toolCall.name,
+				args: toolCall.args,
+				result: toolResult,
+				message: formatToolMessage(toolCall.name, toolResult),
+			};
+			toolHistory.push(toolEvent);
+			if (onToolCall) {
+				onToolCall(toolEvent);
+			}
+		}
+
+		const responseText = createSynthesizedDemoResponse(metadata, toolHistory);
+
 		return {
-			text: createDemoResponse(metadata),
+			text: responseText,
 			model: "demo",
+			tools: toolHistory,
 		};
 	}
 
-	async *stream(_, metadata) {
-		const text = createDemoResponse(metadata);
-		const chunks = text.match(/.{1,80}(\s|$)/g) || [text];
+	async *streamAgentLoop({ prompt, sessionId, executeTool, metadata = {} }) {
+		const toolEvents = [];
+		const result = await this.runAgentLoop({
+			prompt,
+			sessionId,
+			executeTool,
+			onToolCall: (event) => toolEvents.push(event),
+			metadata,
+		});
 
+		for (const event of toolEvents) {
+			yield {
+				type: "tool",
+				tool: event.tool,
+				message: event.message,
+				result: event.result,
+			};
+		}
+
+		const chunks = result.text.match(/.{1,60}(\s|$)/g) || [result.text];
 		for (const chunk of chunks) {
-			yield { text: chunk, model: "demo" };
+			yield { type: "chunk", text: chunk, model: "demo" };
 		}
 	}
 }
 
-function createDemoResponse(metadata = {}) {
-	const mode = metadata.mode || "assistant";
-	const message = String(metadata.message || "").trim();
+function detectToolIntent(message) {
+	const text = String(message || "").trim();
+	const lower = text.toLowerCase();
 
+	// 1. Task Creation
+	if (
+		/\b(add task|create task|new task|add to-do|add todo|put ['"].*?['"] on my task list)\b/i.test(
+			lower,
+		) ||
+		(lower.startsWith("add a task") || lower.startsWith("create a task") || lower.startsWith("put "))
+	) {
+		let title = text
+			.replace(/^.*?\b(add a task to|add task to|create a task to|create task to|add a task:|add task:|add to-do:|add todo:|new task:|put )/i, "")
+			.replace(/\b(on my task list|on my to-do list|with high priority|with medium priority|with low priority)\b/gi, "")
+			.replace(/\b(tomorrow|today|this week)\b/gi, "")
+			.replace(/^[\s:'"]+|[\s:'"]+$/g, "")
+			.trim();
+
+		if (!title) title = "New task item";
+
+		let priority = "medium";
+		if (/\b(high priority|urgent|important|asap)\b/i.test(lower)) priority = "high";
+		else if (/\b(low priority|minor)\b/i.test(lower)) priority = "low";
+
+		let due = "today";
+		if (/\btomorrow\b/i.test(lower)) due = "tomorrow";
+		else if (/\b(this week|next week)\b/i.test(lower)) due = "this week";
+
+		return {
+			name: "createTask",
+			args: { title, priority, due },
+		};
+	}
+
+	// 2. Reminder Creation
+	if (
+		/\b(remind me|set a reminder|add reminder|don't let me forget|dont let me forget)\b/i.test(
+			lower,
+		)
+	) {
+		let title = text
+			.replace(/^.*?\b(remind me to|remind me about|set a reminder for|set a reminder to|add reminder for|add reminder to|don't let me forget to|dont let me forget to)\b/i, "")
+			.replace(/^(tomorrow|today|at|on)\s+/i, "")
+			.replace(/[.!?]+$/, "")
+			.trim();
+
+		if (!title) title = "Scheduled reminder";
+
+		let when = "today 18:00";
+		const timeMatch = text.match(/\b(at \d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\b/i);
+		if (timeMatch) {
+			when = (lower.includes("tomorrow") ? "tomorrow " : "today ") + timeMatch[1];
+		} else if (lower.includes("tomorrow")) {
+			when = "tomorrow 09:00";
+		}
+
+		return {
+			name: "addReminder",
+			args: { title, when },
+		};
+	}
+
+	// 3. Daily Plan Creation
+	if (
+		/\b(plan my day|plan my schedule|create a daily plan|build a schedule|schedule my day|schedule my afternoon)\b/i.test(
+			lower,
+		)
+	) {
+		return {
+			name: "createDailyPlan",
+			args: { prompt: text },
+		};
+	}
+
+	// 4. Project Search
+	if (
+		/\b(search the codebase|search codebase|search project|find references|search in our repository|search the repo)\b/i.test(
+			lower,
+		)
+	) {
+		const query = text
+			.replace(/^.*?\b(search the codebase for|search codebase for|search project for|find references to|search in our repository for|search the repo for)\b/i, "")
+			.replace(/^[\s:'"]+|[\s:'"]+$/g, "")
+			.trim() || text;
+
+		return {
+			name: "searchProject",
+			args: { query },
+		};
+	}
+
+	// 5. Document Query (RAG)
+	if (
+		/\b(query documents|search our knowledge base|search knowledge base|find any documents|search documents|search notes)\b/i.test(
+			lower,
+		)
+	) {
+		const query = text
+			.replace(/^.*?\b(query documents for|search our knowledge base for|find any documents about|search documents for|search notes for)\b/i, "")
+			.replace(/^[\s:'"]+|[\s:'"]+$/g, "")
+			.trim() || text;
+
+		return {
+			name: "queryDocuments",
+			args: { query },
+		};
+	}
+
+	return null;
+}
+
+function createSynthesizedDemoResponse(metadata = {}, tools = []) {
+	const mode = metadata.mode || "assistant";
+	const tool = tools[0];
+
+	if (tool) {
+		if (tool.tool === "createTask") {
+			return `I have added the task **"${tool.args.title}"** to your workspace with **${tool.args.priority || "medium"} priority** (due: ${tool.args.due || "today"}). It is now tracked in your priority board.`;
+		}
+		if (tool.tool === "addReminder") {
+			return `I've scheduled a reminder for you: **"${tool.args.title}"** set for **${tool.args.when || "today 18:00"}**. I will notify you when it is time.`;
+		}
+		if (tool.tool === "createDailyPlan") {
+			return `I have constructed your time-blocked plan for today:\n\n${tool.result?.result?.summary || "Focus blocks structured around your active tasks."}\n\nYour schedule is now synchronized with your active commitments.`;
+		}
+		if (tool.tool === "searchProject") {
+			return `I searched the project workspace for **"${tool.args.query}"** and found ${tool.result?.result?.length || 0} relevant locations.`;
+		}
+		if (tool.tool === "queryDocuments") {
+			return `I searched your knowledge base for **"${tool.args.query}"** and retrieved ${tool.result?.result?.length || 0} relevant document sections.`;
+		}
+	}
+
+	// Standard conversational responses by mode
 	const responses = {
 		assistant: `Hello! I am Lavoro, your AI personal daily assistant.\n\nI can help you:\n• Prepare your **Morning Briefing** with calendar and weather context\n• Prioritize your **Tasks** using the Eisenhower matrix\n• Triage unread **Emails** and draft quick replies\n• Structure a realistic **Time-Blocked Day Plan**\n\nHow can I help you organize your workday right now?`,
 		briefing: `Good morning! Here is your executive briefing for today:\n\n🌤️ **Weather**: 22°C, Partly Cloudy — clear skies expected throughout the afternoon.\n\n📅 **Key Schedule**:\n• **09:00 AM** — Team Standup (30 min)\n• **11:00 AM** — Project Review (1 hour)\n• **02:00 PM** — Client Call (Important, 45 min)\n• **04:00 PM** — Code Review (30 min)\n\n📬 **Priority Emails**:\n• **manager@company.com** — *Q4 Goals Discussion* (Action: review proposed targets before sync)\n\n⭐ **Top Priority Task**:\n• Review daily schedule and prioritize urgent emails\n\nHave a productive and focused day!`,
@@ -92,4 +308,5 @@ function createDemoResponse(metadata = {}) {
 module.exports = {
 	DemoProvider,
 	GeminiProvider,
+	detectToolIntent,
 };

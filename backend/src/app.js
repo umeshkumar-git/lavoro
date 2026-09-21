@@ -213,7 +213,6 @@ app.post("/api/ai/chat", async (req, res) => {
 app.post("/api/ai/stream", async (req, res) => {
 	const startedAt = Date.now();
 	const sessionId = getSessionId(req);
-	const toolInfo = handleAssistantToolRequest(req.body, sessionId);
 	res.writeHead(200, {
 		"Content-Type": "text/event-stream; charset=utf-8",
 		"Cache-Control": "no-cache, no-transform",
@@ -221,17 +220,6 @@ app.post("/api/ai/stream", async (req, res) => {
 	});
 
 	try {
-		if (toolInfo) {
-			res.write(
-				`data: ${JSON.stringify({
-					type: "tool",
-					tool: toolInfo.tool,
-					message: toolInfo.message,
-					result: toolInfo.result,
-				})}\n\n`,
-			);
-		}
-
 		for await (const event of ai.stream({
 			...req.body,
 			sessionId,
@@ -314,71 +302,6 @@ function getSessionId(req) {
 	);
 }
 
-function handleAssistantToolRequest(request = {}, sessionId) {
-	const message = String(request.message || "").trim();
-	if (!message) return null;
-
-	if (
-		/\bplan my day\b|\bplan my schedule\b|\bcreate a daily plan\b|\bwhat should i do today\b/i.test(
-			message,
-		)
-	) {
-		const plan = createDailyPlan(sessionId, message);
-		return {
-			tool: "daily_plan",
-			message:
-				"I created a daily plan based on your active tasks and reminders.",
-			result: plan,
-		};
-	}
-
-	if (/\bremind me\b/i.test(message)) {
-		const reminderTitle = message
-			.replace(/^.*?\bremind me\b/i, "")
-			.replace(/^(?:tomorrow|today|on|about|to)\s+/i, "")
-			.replace(/[.!?]+$/, "")
-			.trim();
-
-		if (reminderTitle) {
-			const reminder = addReminder(sessionId, {
-				title: reminderTitle,
-				when: /tomorrow/i.test(message)
-					? "tomorrow 09:00"
-					: "today 18:00",
-			});
-			return {
-				tool: "reminder",
-				message: "I created a reminder for you.",
-				result: reminder[0],
-			};
-		}
-	}
-
-	if (/\badd task\b|\badd to-do\b|\badd todo\b|\bnew task\b/i.test(message)) {
-		const taskTitle = message
-			.replace(/^.*?\b(add task|add to-do|add todo|new task)\b/i, "")
-			.replace(/^[\s:-]+/, "")
-			.replace(/[.!?]+$/, "")
-			.trim();
-
-		if (taskTitle) {
-			const tasks = addTask(sessionId, {
-				title: taskTitle,
-				priority: "medium",
-				status: "queued",
-				due: "later",
-				category: "task",
-			});
-			return {
-				tool: "task",
-				message: "I added the task to your workspace.",
-				result: tasks[0],
-			};
-		}
-	}
-
-	return null;
-}
 
 function sanitizeProfile(input = {}) {
 	const safe = {};

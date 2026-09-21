@@ -1,6 +1,7 @@
 const { buildAssistantContext } = require("./context");
 const { detectMode } = require("./modes");
 const { buildPrompt } = require("./prompts");
+const { executeTool } = require("./tools");
 const { addMemory, appendMessage } = require("../data/store");
 
 const MAX_MESSAGE_LENGTH = 24_000;
@@ -16,28 +17,40 @@ class AIOrchestrator {
 	async generate(request) {
 		const prepared = await this.prepare(request);
 		const startedAt = Date.now();
+		const toolHistory = [];
 
 		let result;
-		try {
-			result = this.primaryProvider?.isConfigured?.()
-				? await this.primaryProvider.generate(prepared.prompt, prepared.metadata)
-				: null;
-		} catch (error) {
-			console.error("Primary LLM failed; falling back:", error.message);
+		if (this.primaryProvider?.isConfigured?.()) {
+			try {
+				result = await this.primaryProvider.runAgentLoop({
+					prompt: prepared.prompt,
+					sessionId: prepared.sessionId,
+					maxIterations: 4,
+					executeTool: (name, args, ctx) =>
+						executeTool(name, args, { ...ctx, projectRoot: prepared.projectRoot }),
+					metadata: prepared.metadata,
+				});
+			} catch (error) {
+				console.error("Primary agent loop failed; falling back to DemoProvider:", error.message);
+			}
 		}
 
 		if (!result) {
-			result = await this.fallbackProvider.generate(
-				prepared.prompt,
-				prepared.metadata,
-			);
+			result = await this.fallbackProvider.runAgentLoop({
+				prompt: prepared.prompt,
+				sessionId: prepared.sessionId,
+				executeTool: (name, args, ctx) =>
+					executeTool(name, args, { ...ctx, projectRoot: prepared.projectRoot }),
+				metadata: prepared.metadata,
+			});
 		}
 
-		this.recordExchange(prepared, result.text);
+		this.recordExchange(prepared, result.text, result.tools);
 
 		return {
 			success: true,
 			message: result.text,
+			tools: result.tools || [],
 			mode: prepared.mode,
 			model: result.model,
 			latencyMs: Date.now() - startedAt,
@@ -50,39 +63,58 @@ class AIOrchestrator {
 		let fullText = "";
 		let model = "demo";
 		let streamed = false;
+		const executedTools = [];
 
 		if (this.primaryProvider?.isConfigured?.()) {
 			try {
-				for await (const chunk of this.primaryProvider.stream(
-					prepared.prompt,
-					prepared.metadata,
-				)) {
+				for await (const event of this.primaryProvider.streamAgentLoop({
+					prompt: prepared.prompt,
+					sessionId: prepared.sessionId,
+					maxIterations: 4,
+					executeTool: (name, args, ctx) =>
+						executeTool(name, args, { ...ctx, projectRoot: prepared.projectRoot }),
+				})) {
 					streamed = true;
-					model = chunk.model;
-					fullText += chunk.text;
-					yield { type: "chunk", text: chunk.text, model };
+					if (event.type === "tool") {
+						executedTools.push(event);
+						yield event;
+					} else if (event.type === "chunk") {
+						model = event.model;
+						fullText += event.text;
+						yield event;
+					}
 				}
 			} catch (error) {
-				console.error("Primary stream failed; falling back:", error.message);
+				console.error("Primary streamAgentLoop failed; falling back to DemoProvider:", error.message);
 			}
 		}
 
 		if (!streamed) {
-			for await (const chunk of this.fallbackProvider.stream(
-				prepared.prompt,
-				prepared.metadata,
-			)) {
-				model = chunk.model;
-				fullText += chunk.text;
-				yield { type: "chunk", text: chunk.text, model };
+			for await (const event of this.fallbackProvider.streamAgentLoop({
+				prompt: prepared.prompt,
+				sessionId: prepared.sessionId,
+				executeTool: (name, args, ctx) =>
+					executeTool(name, args, { ...ctx, projectRoot: prepared.projectRoot }),
+				metadata: prepared.metadata,
+			})) {
+				if (event.type === "tool") {
+					executedTools.push(event);
+					yield event;
+				} else if (event.type === "chunk") {
+					model = event.model;
+					fullText += event.text;
+					yield event;
+				}
 			}
 		}
 
-		this.recordExchange(prepared, fullText);
+		this.recordExchange(prepared, fullText, executedTools);
+
 		yield {
 			type: "done",
 			mode: prepared.mode,
 			model,
+			tools: executedTools,
 			latencyMs: Date.now() - startedAt,
 		};
 	}
@@ -108,12 +140,13 @@ class AIOrchestrator {
 			sessionId: request.sessionId,
 			message,
 			mode,
+			projectRoot: process.cwd(),
 			prompt: buildPrompt({ message, context }),
-			metadata: { mode, message },
+			metadata: { mode, message, sessionId: request.sessionId },
 		};
 	}
 
-	recordExchange(prepared, assistantText) {
+	recordExchange(prepared, assistantText, tools = []) {
 		appendMessage(prepared.sessionId, {
 			role: "user",
 			content: prepared.message,
@@ -123,8 +156,9 @@ class AIOrchestrator {
 			role: "assistant",
 			content: assistantText,
 			mode: prepared.mode,
+			tools,
 		});
-		recordProductivityMemory(prepared.sessionId, prepared.message, prepared.mode);
+		recordProductivityMemory(prepared.sessionId, prepared.message, prepared.mode, tools);
 	}
 }
 
@@ -193,7 +227,7 @@ function sanitizeList(items, limit) {
 	});
 }
 
-function recordProductivityMemory(sessionId, message, mode) {
+function recordProductivityMemory(sessionId, message, mode, tools = []) {
 	const lower = message.toLowerCase();
 	const priorityKeywords = [
 		"focus",
@@ -206,10 +240,12 @@ function recordProductivityMemory(sessionId, message, mode) {
 		"goal",
 	].filter((keyword) => lower.includes(keyword));
 
-	if (priorityKeywords.length > 0 || mode === "planner" || mode === "tasks") {
+	if (priorityKeywords.length > 0 || tools.length > 0 || mode === "planner" || mode === "tasks") {
 		addMemory(sessionId, {
 			type: "productivity-preference",
-			summary: `User engaged on ${priorityKeywords.join(", ") || mode} planning.`,
+			summary: tools.length > 0
+				? `Executed ${tools.map((t) => t.tool || t.name).join(", ")} based on user prompt.`
+				: `User engaged on ${priorityKeywords.join(", ") || mode} planning.`,
 			keywords: priorityKeywords,
 		});
 	}

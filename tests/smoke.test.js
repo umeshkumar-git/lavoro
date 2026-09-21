@@ -207,3 +207,27 @@ test("third-party integration endpoints expose supported connectors and webhook 
 		"webhook response should succeed",
 	);
 });
+
+test("agent loop processes tool calling requests and records workspace state", async () => {
+	const response = await request(app)
+		.post("/api/ai/chat")
+		.send({
+			message: "Add a task to finalize the release notes with high priority",
+			sessionId: "test-agent-session",
+		});
+	assert.equal(response.status, 200, "chat endpoint should return 200");
+	assert.equal(response.body.success, true, "chat should succeed");
+	assert.ok(Array.isArray(response.body.tools), "tools array should be returned");
+	assert.ok(response.body.tools.length > 0, "at least one tool should have been called");
+	assert.equal(response.body.tools[0].tool, "createTask");
+
+	const tasksResponse = await request(app)
+		.get("/api/tasks")
+		.set("x-session-id", "test-agent-session");
+	assert.equal(tasksResponse.status, 200);
+	const tasksPayload = tasksResponse.body;
+	assert.ok(
+		tasksPayload.tasks.some((t) => t.title.includes("finalize the release notes")),
+		"newly created task should appear in user tasks",
+	);
+});
