@@ -9,41 +9,16 @@ services:
     ports:
       - "10000:10000"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 10000
-      REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgres://postgres:postgres@db:5432/lavoro
-      JWT_SECRET: change-me-in-production
+      DATABASE_URL: sqlite:///app/data/lavoro.db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318/v1/traces}
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  db:
-    image: postgres:16-alpine
-    container_name: lavoro-db
-    environment:
-      POSTGRES_DB: lavoro
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: lavoro-redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
+      - lavoro_data:/app/data
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  lavoro_data:

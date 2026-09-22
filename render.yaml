@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: lavoro
+    runtime: docker
+    plan: starter
+    disk:
+      name: lavoro-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: sqlite:///app/data/lavoro.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
