@@ -98,7 +98,7 @@ test("AIOrchestrator generates response and executes tool calls via agent loop",
 	assert.ok(response.tools[0].message);
 });
 
-test("AIOrchestrator stream yields tool events before text tokens", async () => {
+test("AIOrchestrator stream yields tool events before text chunks", async () => {
 	const orchestrator = new AIOrchestrator();
 	const sessionId = "stream-test-session";
 

@@ -72,7 +72,7 @@ flowchart TD
         end
 
         subgraph ModelProviders ["Provider Abstraction Layer"]
-            Gemini["Gemini 3 Flash<br/>(Native Tool Calling & SSE Tokens)"]
+            Gemini["Gemini 3 Flash<br/>(Native Tool Calling & SSE Delivery)"]
             DemoFallback["Deterministic Provider<br/>(Offline & CI Fallback)"]
         end
     end
@@ -217,7 +217,7 @@ lavoro/
 ## Authentication & Security
 
 ### Bcrypt Password Hashing
-Passwords are never stored in plaintext. Passwords are salted and hashed using `bcrypt` (10 rounds) during user creation in [userRepository.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/backend/src/repositories/userRepository.js). Login authentication performs constant-time comparison via `bcrypt.compare`.
+Passwords are never stored in plaintext. Passwords are salted and hashed using `bcrypt` (10 rounds) during user creation in [userRepository.js](backend/src/repositories/userRepository.js). Login authentication performs constant-time comparison via `bcrypt.compare`.
 
 ### JWT Access & Refresh Rotation
 - **Access Tokens**: Signed with `JWT_SECRET` with short TTL (default: 15 minutes).
@@ -226,14 +226,14 @@ Passwords are never stored in plaintext. Passwords are salted and hashed using `
 
 ### Architectural Limitation: In-Memory Token Scope
 > [!WARNING]
-> **Single-Instance / Local-Dev Scope**: Refresh tokens currently live in an in-memory Map (`refreshTokens` in [authService.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/backend/src/services/authService.js)).
+> **Single-Instance / Local-Dev Scope**: Refresh tokens currently live in an in-memory Map (`refreshTokens` in [authService.js](backend/src/services/authService.js)).
 > - **Volatility**: Tokens vanish upon server restart or process crashes.
 > - **Horizontal Scaling**: Multi-instance deployments cannot validate tokens issued by peer instances without sticky sessions or a shared persistence layer.
 >
 > **Roadmap to Persistence**: In a multi-instance production environment, this in-memory Map will be migrated to Redis with TTL expiration or PostgreSQL token tables with explicit revocation lists.
 
 ### Demo Account Seeding
-Demo accounts are managed via [scripts/seed.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/scripts/seed.js) and are **strictly prohibited** in production:
+Demo accounts are managed via [scripts/seed.js](scripts/seed.js) and are **strictly prohibited** in production:
 - Automatically runs when `NODE_ENV !== 'production'`.
 - Aborts immediately if `NODE_ENV === 'production'`.
 - Uses a clearly identifiable dev credential:
@@ -245,7 +245,7 @@ Demo accounts are managed via [scripts/seed.js](file:///Users/umeshshah/Umesh%20
 ## Observability & Telemetry
 
 Lavoro integrates production-grade observability out of the box:
-- **OpenTelemetry**: Configured in [telemetry.js](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/backend/src/config/telemetry.js). Automatically instruments incoming HTTP requests and exports traces when `OTEL_EXPORTER_OTLP_ENDPOINT` is configured.
+- **OpenTelemetry**: Configured in [telemetry.js](backend/src/config/telemetry.js). Automatically instruments incoming HTTP requests and exports traces when `OTEL_EXPORTER_OTLP_ENDPOINT` is configured.
 - **Sentry**: Captures unhandled exceptions and request contexts when `SENTRY_DSN` is set.
 - **Pino**: Structured, high-performance JSON logging for all incoming requests and system events.
 
@@ -392,13 +392,13 @@ Measured locally using [autocannon](https://github.com/mcollina/autocannon) with
 | `POST /api/ai/chat` | JSON | **7,133 req/s** | 11.77 MB/s | **1 ms** | 1 ms | **2 ms** | 2 ms |
 | `POST /api/ai/stream` | SSE | **6,076 req/s** | 14.51 MB/s | **1 ms** | 2 ms | **2 ms** | 2 ms |
 
-> *All measurements reflect actual in-process execution with Zod input validation, Helmet security headers, and AI orchestrator dispatch.*
+> *All measurements reflect actual in-process execution with Zod input validation, Helmet security headers, and AI orchestrator dispatch (measured against the local agent loop with the demo provider, isolating server overhead from upstream Gemini latency).*
 
 ---
 
 ## CI/CD Pipeline
 
-The GitHub Actions workflow at [.github/workflows/ci.yml](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/.github/workflows/ci.yml) runs on every push and pull request:
+The GitHub Actions workflow at [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request:
 1. Checks out repository on `ubuntu-latest`.
 2. Sets up Node.js 20 with npm dependency caching.
 3. Installs clean dependencies via `npm ci` and `npm --prefix backend ci`.
@@ -409,7 +409,7 @@ The GitHub Actions workflow at [.github/workflows/ci.yml](file:///Users/umeshsha
 
 ## Interview & Resume Prep Guide
 
-A dedicated interview preparation guide is available in [`docs/INTERVIEW_PREP.md`](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/docs/INTERVIEW_PREP.md), including:
+A dedicated interview preparation guide is available in [`docs/INTERVIEW_PREP.md`](docs/INTERVIEW_PREP.md), including:
 - **3 Quantified Resume Bullets**: Specific, checkable numbers backed by code and automated benchmarks.
 - **90-Second Verbal Pitch**: A natural verbal walkthrough explaining the system, engineering trade-offs, and architecture without buzzwords.
 - **10 Technical Interview Questions & Honest Answers**: Comprehensive architectural deep-dives covering cosine similarity vs. ANN, refresh token rotation, in-flight job resiliency, LLM loop limits, and path traversal security guards.
@@ -427,4 +427,4 @@ A dedicated interview preparation guide is available in [`docs/INTERVIEW_PREP.md
 
 ## License
 
-This project is licensed under the **MIT License**. See the [LICENSE](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/LICENSE) file for details.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.

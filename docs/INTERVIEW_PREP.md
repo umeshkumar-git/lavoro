@@ -10,7 +10,7 @@ This guide is your complete, battle-tested preparation sheet for technical inter
 > **AI Productivity Platform & Agent Engine (Lavoro)** | *Node.js, Express, Gemini Function Calling, SQLite, Zod, Supertest*
 > - Engineered an autonomous ReAct tool-calling AI agent using Gemini’s native function-calling API with a multi-step Plan-Act-Observe-Synthesize loop, verified against an 18-prompt regression eval suite achieving **100% tool-selection accuracy**.
 > - Upgraded RAG retrieval to 3,072-dimensional neural embeddings (`gemini-embedding-001`) with sliding-window chunking (500-char window, 100-char overlap) and in-process SQLite vector cosine scanning, eliminating third-party vector SaaS latency and failure modes.
-> - Hardened Express backend with Helmet headers, strict Zod request validation, and auth rate limiting (5 req/min); load-tested via Autocannon achieving **7,133 req/s at 1ms p50 / 2ms p95 latency** and **85.2% line coverage** across 54 in-process tests.
+> - Hardened Express backend with Helmet headers, strict Zod request validation, and auth rate limiting (5 req/min); load-tested via Autocannon achieving **7,133 req/s at 1ms p50 / 2ms p95 latency** (measured against the local agent loop with the demo provider, isolating server overhead from upstream Gemini latency) and **85.2% line coverage** across 54 in-process tests.
 
 ### Option B (Backend & Systems Focus)
 > **Backend & Systems Engineering (Lavoro)** | *Node.js, Express 5, better-sqlite3 (WAL), OpenTelemetry, Pino, c8*
@@ -19,7 +19,7 @@ This guide is your complete, battle-tested preparation sheet for technical inter
 > - Replaced live-port smoke tests with in-process Supertest integration tests; authored pure-logic unit test suites (path traversal security assertions, mode heuristics, token rotation) and achieved **85% line coverage** in CI on Node 20.
 
 ### Option C (Concise Single-Bullet Summary)
-> - Built **Lavoro**, an AI agent productivity platform in Node.js/Express featuring Gemini function-calling with a 4-step tool loop (100% eval accuracy across 18 test cases), 3,072D neural RAG, SQLite WAL persistence, and security hardening benchmarked at **7,133 req/s (1ms p50 / 2ms p95)** with **85% line coverage** across 54 automated tests.
+> - Built **Lavoro**, an AI agent productivity platform in Node.js/Express featuring Gemini function-calling with a 4-step tool loop (100% eval accuracy across 18 test cases), 3,072D neural RAG, SQLite WAL persistence, and security hardening benchmarked at **7,133 req/s (1ms p50 / 2ms p95)** (measured against the local agent loop with the demo provider, isolating server overhead from upstream Gemini latency) with **85% line coverage** across 54 automated tests.
 
 ---
 
@@ -33,7 +33,7 @@ This guide is your complete, battle-tested preparation sheet for technical inter
 >
 > On the systems side, I focused heavily on engineering rigor. I replaced volatile in-memory storage with an embedded SQLite database using `better-sqlite3` in Write-Ahead Logging mode with schema migrations, so user sessions, RAG vectors, and background jobs survive server restarts. For retrieval-augmented generation, instead of a toy hash, I integrated 3,072-dimensional Gemini neural embeddings with natural-boundary sliding-window document chunking.
 >
-> Finally, I treated security and quality as first-class citizens: I implemented atomic refresh token rotation, Helmet security headers, strict Zod schema validation on every route, path-traversal security guards, and isolated rate limiting on login. The entire test suite runs in-process with Supertest, hitting 85% line coverage on Node 20. When load-tested with Autocannon, it handles over 7,100 requests per second with a 1-millisecond p50 and 2-millisecond p95 latency.
+> Finally, I treated security and quality as first-class citizens: I implemented atomic refresh token rotation, Helmet security headers, strict Zod schema validation on every route, path-traversal security guards, and isolated rate limiting on login. The entire test suite runs in-process with Supertest, hitting 85% line coverage on Node 20. When load-tested with Autocannon against the local agent loop with the demo provider (isolating server overhead from upstream Gemini latency), it handles over 7,100 requests per second with a 1-millisecond p50 and 2-millisecond p95 latency.
 >
 > The codebase has an interactive Swagger UI at `/api/docs`, is containerized with Docker, and is ready for Google Cloud Run."
 
@@ -133,17 +133,17 @@ This guide is your complete, battle-tested preparation sheet for technical inter
 
 ### Q9: "How does Server-Sent Events (SSE) streaming handle tool execution before text chunks?"
 **Your Answer:**
-> "In an agentic workflow, streaming raw tokens while the model is attempting to call a tool creates a confusing user experience (e.g. streaming raw JSON tool calls into chat).
+> "In an agentic workflow with function calling, the loop must execute tools and observe results before any final answer can be synthesized. In Lavoro, `POST /api/ai/stream` implements **chunked delivery for UI/UX pacing, not token-level model streaming**.
 >
 > In `POST /api/ai/stream`:
-> 1. The orchestrator's async generator first yields tool execution events:
+> 1. The orchestrator runs the ReAct tool loop to completion, resolving tool calls, executing actions in the workspace, and obtaining observations.
+> 2. The async generator dispatches tool execution events first:
 >    `{ type: 'tool', tool: 'createTask', message: 'Created task: ...' }`
-> 2. The client frontend catches this event and immediately renders an interactive tool card in the UI.
-> 3. Once tool results are observed and the model begins generating the natural-language explanation, the generator yields token chunks:
->    `{ type: 'chunk', text: 'I have prioritized your schedule...' }`
-> 4. When finished, it emits `{ type: 'done', latencyMs: ... }`.
+> 3. The client frontend catches these events and renders interactive tool cards immediately.
+> 4. Once tool execution and model synthesis are complete, the server splits the final text into ~60-character pieces and yields them over SSE. This provides smooth UI/UX pacing and typewriter rendering in the browser rather than dumping a wall of text all at once.
+> 5. When delivery finishes, it emits `{ type: 'done', latencyMs: ... }`.
 >
-> I wrote a unit test in `tests/unit/agentLoop.test.js` asserting that the `tool` event index is strictly less than the first `chunk` event index."
+> I wrote a unit test in `tests/unit/agentLoop.test.js` asserting that the `tool` event index is strictly less than the first `chunk` event index. Being precise here is important: it is intentional chunked delivery for UI/UX pacing, isolating tool execution from text display, with true token-level streaming on the final synthesis turn reserved for future enhancement."
 
 ---
 

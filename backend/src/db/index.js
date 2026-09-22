@@ -56,7 +56,7 @@ function initDatabase(options = {}) {
 	if (_db) {
 		try {
 			_db.close();
-		} catch (_) {}
+		} catch (_) { }
 		_db = null;
 	}
 
@@ -116,7 +116,7 @@ function closeDatabase() {
 	if (_db) {
 		try {
 			_db.close();
-		} catch (_) {}
+		} catch (_) { }
 		_db = null;
 	}
 }

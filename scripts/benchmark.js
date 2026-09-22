@@ -1,4 +1,7 @@
+// BENCHMARK_MODE routes requests through DemoProvider to measure local server
+// and orchestrator overhead isolated from upstream Gemini API latency.
 process.env.BENCHMARK_MODE = "true";
+
 
 const http = require("http");
 const autocannon = require("autocannon");

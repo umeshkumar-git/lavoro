@@ -78,7 +78,7 @@ export JWT_SECRET="your-secure-32-char-random-jwt-secret"
 
 ## 3. Vercel Serverless Deployment
 
-Lavoro includes a root [`vercel.json`](file:///Users/umeshshah/Umesh%20Stuff/daily-assistant/vercel.json) configuration mapping all routes to `backend/server.js`.
+Lavoro includes a root [`vercel.json`](vercel.json) configuration mapping all routes to `backend/server.js`.
 
 1. **Install Vercel CLI**:
    ```bash

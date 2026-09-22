@@ -96,7 +96,7 @@ class GeminiProvider {
 			};
 		}
 
-		// Stream the final synthesized text response
+		// Chunked delivery for UI/UX pacing, not token-level model streaming
 		const chunks = result.text.match(/.{1,60}(\s|$)/g) || [result.text];
 		for (const chunk of chunks) {
 			yield { type: "chunk", text: chunk, model: result.model };
@@ -152,6 +152,7 @@ class DemoProvider {
 			};
 		}
 
+		// Chunked delivery for UI/UX pacing, not token-level model streaming
 		const chunks = result.text.match(/.{1,60}(\s|$)/g) || [result.text];
 		for (const chunk of chunks) {
 			yield { type: "chunk", text: chunk, model: "demo" };
