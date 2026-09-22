@@ -109,7 +109,7 @@ flowchart TD
 - **AI Orchestration**: Built-in multi-mode orchestrator supporting streaming responses (SSE) with Gemini 3 Flash / Flash Lite, native function calling, and resilient fallbacks.
 - **Persistence Layer**: Embedded SQLite database via `better-sqlite3` with WAL mode, automated SQL migrations, restart survival, and honest in-memory fallback.
 - **Security & RBAC**: Stateless JWT access tokens with refresh token rotation, bcrypt-hashed credentials, Helmet security headers, and strict Zod schema validation.
-- **Performance Caching**: Tiered in-memory / Redis cache for fast metric and dashboard aggregation.
+- **Performance Caching**: In-memory cache interface with TTL support for fast metric and dashboard aggregation (Redis distributed caching on roadmap).
 - **Observability**: Distributed tracing via OpenTelemetry, real-time error capture via Sentry, and Pino structured logging.
 - **Asynchronous Processing**: Background job ingestion for asynchronous summaries and report generation.
 
@@ -286,7 +286,7 @@ Lavoro integrates production-grade observability out of the box:
 ### Jobs & Integrations
 - `POST /api/jobs` — Enqueue an asynchronous background job.
 - `GET /api/jobs/:id` — Query status of a background job.
-- `GET /api/integrations/connectors` — List active third-party integrations (Google Calendar, Slack).
+- `GET /api/integrations/connectors` — List available connector stubs (Google Calendar, Slack).
 - `POST /api/integrations/webhooks/:provider` — Ingest external webhooks.
 
 ### Project Scanner
