@@ -425,6 +425,14 @@ A dedicated interview preparation guide is available in [`docs/INTERVIEW_PREP.md
 
 ---
 
+### lavoro
+
+**Live Website:** [lavoro.umeshshah.in](https://lavoro.umeshshah.in)
+
+**Repository:** [github.com/umeshkumar-git/lavoro(https://github.com/umeshkumar-git/lavoro)
+
+---
+
 ## License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
