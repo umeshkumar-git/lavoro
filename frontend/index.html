@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,174 +8,1750 @@
 			name="description"
 			content="Lavoro is an AI-powered personal daily productivity assistant that automates morning briefings, prioritizes tasks with the Eisenhower matrix, triages emails, and structures realistic daily schedules."
 		/>
-		<link rel="stylesheet" href="style.css" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
-			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
 			rel="stylesheet"
 		/>
-		<link
-			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-			rel="stylesheet"
-		/>
+		<link rel="stylesheet" href="style.css" />
 	</head>
 	<body>
-		<div class="page-shell">
-			<div class="app-shell">
-				<header class="app-header">
-					<div class="brand-lockup">
-						<img
-							src="/lavoro-logo.png"
-							alt="Lavoro logo"
-							class="brand-logo"
+		<div class="app-layout app-shell" id="appLayout">
+			<!-- LEFT SIDEBAR -->
+			<aside class="app-sidebar" id="appSidebar" aria-label="Main Navigation">
+				<div class="sidebar-top">
+					<button
+						class="brand-mark-btn"
+						type="button"
+						id="brandLogoBtn"
+						title="Lavoro AI — Home"
+						aria-label="Lavoro Home"
+					>
+						<svg
+							class="brand-icon"
+							viewBox="0 0 32 32"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<rect
+								width="32"
+								height="32"
+								rx="10"
+								fill="url(#brandGrad)"
+							/>
+							<path
+								d="M10 21.5L16 9.5L22 21.5H10Z"
+								fill="white"
+								fill-opacity="0.9"
+							/>
+							<circle cx="16" cy="18" r="2.5" fill="#3b82f6" />
+							<defs>
+								<linearGradient
+									id="brandGrad"
+									x1="0"
+									y1="0"
+									x2="32"
+									y2="32"
+									gradientUnits="userSpaceOnUse"
+								>
+									<stop stop-color="#4f46e5" />
+									<stop offset="1" stop-color="#3b82f6" />
+								</linearGradient>
+							</defs>
+						</svg>
+					</button>
+
+					<nav class="sidebar-nav" aria-label="Primary Views">
+						<button
+							class="nav-item active"
+							type="button"
+							data-view="assistant"
+							title="Assistant (1)"
+							aria-label="Assistant"
+							aria-current="page"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"
+								/>
+								<path
+									d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"
+								/>
+							</svg>
+							<span class="nav-tooltip">Assistant</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="tasks"
+							title="Tasks (2)"
+							aria-label="Tasks"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M9 11l3 3L22 4" />
+								<path
+									d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+								/>
+							</svg>
+							<span class="nav-tooltip">Tasks</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="planner"
+							title="Planner (3)"
+							aria-label="Planner"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<rect
+									x="3"
+									y="4"
+									width="18"
+									height="18"
+									rx="2"
+									ry="2"
+								/>
+								<line x1="16" y1="2" x2="16" y2="6" />
+								<line x1="8" y1="2" x2="8" y2="6" />
+								<line x1="3" y1="10" x2="21" y2="10" />
+							</svg>
+							<span class="nav-tooltip">Planner</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="reminders"
+							title="Reminders (4)"
+							aria-label="Reminders"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"
+								/>
+								<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+							</svg>
+							<span class="nav-tooltip">Reminders</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="briefing"
+							title="Daily Briefing (5)"
+							aria-label="Daily Briefing"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="5" />
+								<line x1="12" y1="1" x2="12" y2="3" />
+								<line x1="12" y1="21" x2="12" y2="23" />
+								<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+								<line
+									x1="18.36"
+									y1="18.36"
+									x2="19.78"
+									y2="19.78"
+								/>
+								<line x1="1" y1="12" x2="3" y2="12" />
+								<line x1="21" y1="12" x2="23" y2="12" />
+								<line
+									x1="4.22"
+									y1="19.78"
+									x2="5.64"
+									y2="18.36"
+								/>
+								<line
+									x1="18.36"
+									y1="5.64"
+									x2="19.78"
+									y2="4.22"
+								/>
+							</svg>
+							<span class="nav-tooltip">Daily Briefing</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="knowledge"
+							title="Knowledge (6)"
+							aria-label="Knowledge"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+								></path>
+								<path
+									d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+								></path>
+							</svg>
+							<span class="nav-tooltip">Knowledge</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="conversations"
+							title="Conversations (7)"
+							aria-label="Conversations"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+								/>
+							</svg>
+							<span class="nav-tooltip">Conversations</span>
+						</button>
+
+						<button
+							class="nav-item"
+							type="button"
+							data-view="dashboard"
+							title="Dashboard (8)"
+							aria-label="Dashboard"
+						>
+							<svg
+								class="nav-svg"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.8"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="18" y1="20" x2="18" y2="10" />
+								<line x1="12" y1="20" x2="12" y2="4" />
+								<line x1="6" y1="20" x2="6" y2="14" />
+							</svg>
+							<span class="nav-tooltip">Dashboard</span>
+						</button>
+					</nav>
+				</div>
+
+				<div class="sidebar-bottom">
+					<button
+						class="icon-action-btn"
+						type="button"
+						id="themeToggleBtn"
+						title="Toggle Dark / Light Theme"
+						aria-label="Toggle Theme"
+					>
+						<svg
+							class="theme-icon-sun"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="5" />
+							<line x1="12" y1="1" x2="12" y2="3" />
+							<line x1="12" y1="21" x2="12" y2="23" />
+							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+							<line
+								x1="18.36"
+								y1="18.36"
+								x2="19.78"
+								y2="19.78"
+							/>
+							<line x1="1" y1="12" x2="3" y2="12" />
+							<line x1="21" y1="12" x2="23" y2="12" />
+							<line
+								x1="4.22"
+								y1="19.78"
+								x2="5.64"
+								y2="18.36"
+							/>
+							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+						</svg>
+						<svg
+							class="theme-icon-moon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path
+								d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+							/>
+						</svg>
+						<span class="nav-tooltip">Theme</span>
+					</button>
+
+					<button
+						class="icon-action-btn"
+						type="button"
+						id="openSettingsBtn"
+						title="Settings"
+						aria-label="Open Settings"
+					>
+						<svg
+							class="nav-svg"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="3"></circle>
+							<path
+								d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+							></path>
+						</svg>
+						<span class="nav-tooltip">Settings</span>
+					</button>
+
+					<button
+						class="user-avatar-btn"
+						type="button"
+						id="userAvatarBtn"
+						title="Account Profile"
+						aria-label="User Profile"
+					>
+						<span class="user-avatar-text" id="avatarInitials"
+							>UK</span
+						>
+						<span
+							class="user-status-dot online"
+							id="sidebarStatusDot"
+						></span>
+						<span class="nav-tooltip">Profile</span>
+					</button>
+				</div>
+			</aside>
+
+			<!-- MOBILE BOTTOM NAVIGATION -->
+			<nav
+				class="mobile-bottom-bar"
+				id="mobileNav"
+				aria-label="Mobile Navigation"
+			>
+				<button
+					class="mobile-nav-btn active"
+					type="button"
+					data-view="assistant"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4"
 						/>
-						<div>
-							<p class="header-kicker">AI Productivity Agent</p>
-							<h1>Lavoro: Personal Daily Assistant</h1>
-							<p class="header-subtitle">Smart morning briefings, task prioritization, email triage, and day planning.</p>
+					</svg>
+					<span>Assistant</span>
+				</button>
+				<button class="mobile-nav-btn" type="button" data-view="tasks">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M9 11l3 3L22 4" />
+						<path
+							d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+						/>
+					</svg>
+					<span>Tasks</span>
+				</button>
+				<button
+					class="mobile-nav-btn"
+					type="button"
+					data-view="planner"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<rect x="3" y="4" width="18" height="18" rx="2" />
+						<line x1="16" y1="2" x2="16" y2="6" />
+						<line x1="8" y1="2" x2="8" y2="6" />
+						<line x1="3" y1="10" x2="21" y2="10" />
+					</svg>
+					<span>Planner</span>
+				</button>
+				<button
+					class="mobile-nav-btn"
+					type="button"
+					data-view="briefing"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="5" />
+						<line x1="12" y1="1" x2="12" y2="3" />
+						<line x1="12" y1="21" x2="12" y2="23" />
+					</svg>
+					<span>Briefing</span>
+				</button>
+				<button
+					class="mobile-nav-btn"
+					type="button"
+					id="mobileMoreBtn"
+					data-view="dashboard"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="1" />
+						<circle cx="19" cy="12" r="1" />
+						<circle cx="5" cy="12" r="1" />
+					</svg>
+					<span>More</span>
+				</button>
+			</nav>
+
+			<!-- MAIN WORKSPACE -->
+			<div class="workspace-container">
+				<!-- MINIMAL HEADER -->
+				<header class="workspace-header">
+					<div class="header-left">
+						<button
+							class="mobile-menu-trigger"
+							id="mobileMenuTrigger"
+							type="button"
+							aria-label="Open navigation menu"
+						>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="3" y1="12" x2="21" y2="12" />
+								<line x1="3" y1="6" x2="21" y2="6" />
+								<line x1="3" y1="18" x2="21" y2="18" />
+							</svg>
+						</button>
+						<div class="view-breadcrumb">
+							<span class="breadcrumb-app">Lavoro</span>
+							<span class="breadcrumb-slash">/</span>
+							<span
+								class="breadcrumb-current"
+								id="currentViewLabel"
+								>Assistant</span
+							>
 						</div>
 					</div>
-					<div id="healthBadge" class="health-badge" role="status">
-						<span class="status-dot"></span>
-						Checking backend
+
+					<div class="header-center">
+						<!-- MODE SELECTOR BUTTON -->
+						<div class="mode-dropdown-wrap">
+							<button
+								class="mode-selector-pill"
+								type="button"
+								id="modeSelectorBtn"
+								aria-haspopup="true"
+								aria-expanded="false"
+							>
+								<span
+									class="mode-pill-dot"
+									id="modeDot"
+								></span>
+								<span class="mode-pill-label" id="currentModeLabel"
+									>Assistant</span
+								>
+								<svg
+									class="mode-chevron"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path d="M6 9l6 6 6-6" />
+								</svg>
+							</button>
+
+							<!-- MODE DROPDOWN MENU -->
+							<div
+								class="mode-menu"
+								id="modeMenu"
+								role="menu"
+								aria-label="Productivity Modes"
+								hidden
+							>
+								<div class="mode-menu-header">
+									<span>AI Productivity Mode</span>
+								</div>
+								<div
+									class="mode-menu-options"
+									id="modeMenuOptions"
+								>
+									<!-- Populated by JS -->
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="header-right">
+						<div
+							id="healthBadge"
+							class="health-status-badge"
+							role="status"
+							title="Backend Service Status"
+						>
+							<span class="status-indicator"></span>
+							<span id="healthLabel">Connecting...</span>
+						</div>
+
+						<button
+							class="header-action-btn"
+							type="button"
+							id="newChatHeaderBtn"
+							title="Start new conversation"
+							aria-label="New Conversation"
+						>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" />
+								<line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+							<span class="hide-mobile">New</span>
+						</button>
 					</div>
 				</header>
 
-				<main class="dashboard" aria-live="polite">
-					<nav class="quick-actions" aria-label="Quick actions">
-						<button
-							class="quick-action active"
-							type="button"
-							data-view="briefing"
-							aria-pressed="true"
-						>
-							<span class="action-icon" aria-hidden="true"
-								>📅</span
-							>
-							<span>Morning Briefing</span>
-						</button>
-						<button
-							class="quick-action"
-							type="button"
-							data-view="email"
-							aria-pressed="false"
-						>
-							<span class="action-icon" aria-hidden="true"
-								>📧</span
-							>
-							<span>Email Summary</span>
-						</button>
-						<button
-							class="quick-action"
-							type="button"
-							data-view="tasks"
-							aria-pressed="false"
-						>
-							<span class="action-icon" aria-hidden="true"
-								>⭐</span
-							>
-							<span>Prioritize Tasks</span>
-						</button>
-						<button
-							class="quick-action"
-							type="button"
-							data-view="planner"
-							aria-pressed="false"
-						>
-							<span class="action-icon" aria-hidden="true"
-								>🗓️</span
-							>
-							<span>Plan My Day</span>
-						</button>
-					</nav>
-
+				<!-- MAIN VIEWS CONTAINER -->
+				<main class="workspace-main" id="workspaceMain">
+					<!-- ============================================== -->
+					<!-- VIEW: ASSISTANT / HOME -->
+					<!-- ============================================== -->
 					<section
-						id="contentArea"
-						class="content-area"
-						aria-label="Assistant dashboard"
+						class="view-pane active"
+						id="viewAssistant"
+						aria-label="AI Assistant"
 					>
-						<div class="loading-card">Loading your day...</div>
-					</section>
-
-					<section class="chat-panel" aria-labelledby="chatTitle">
-						<div class="chat-panel-header">
-							<div>
-								<p class="section-label">AI Assistant</p>
-								<h2 id="chatTitle">Ask about your day</h2>
-							</div>
-							<button
-								id="resetChatBtn"
-								class="secondary-btn"
-								type="button"
+						<!-- WELCOME HERO STATE -->
+						<div class="assistant-welcome-hero" id="assistantHero">
+							<div
+								class="lavoro-orb-wrap"
+								id="lavoroOrb"
+								title="Lavoro AI Presence"
 							>
-								<i
-									class="fas fa-rotate-right"
-									aria-hidden="true"
-								></i>
-								Reset Chat
-							</button>
+								<div class="lavoro-orb">
+									<div class="orb-inner"></div>
+									<div class="orb-pulse"></div>
+								</div>
+							</div>
+
+							<div class="hero-typography">
+								<h1 class="hero-title" id="greetingHeading">
+									Good evening, Umesh.
+								</h1>
+								<p class="hero-sub" id="greetingSubheading">
+									What would you like to accomplish today?
+								</p>
+							</div>
 						</div>
 
+						<!-- CHAT MESSAGES LOG (Smoothly revealed on first interaction) -->
 						<div
-							id="chatMessages"
-							class="chat-messages"
-							role="log"
-							aria-live="polite"
-							aria-label="Chat messages"
-						></div>
-						<div
-							id="attachmentTray"
-							class="attachment-tray"
+							class="chat-thread-container"
+							id="chatThreadContainer"
 							hidden
-						></div>
+						>
+							<div
+								id="chatMessages"
+								class="chat-messages"
+								role="log"
+								aria-live="polite"
+								aria-label="Chat messages"
+							></div>
+						</div>
 
-						<form id="chatForm" class="composer">
-							<label class="sr-only" for="userInput"
-								>Ask me anything about your day</label
+						<!-- FLOATING / PINNED COMPOSER -->
+						<div
+							class="composer-floating-container"
+							id="composerSection"
+						>
+							<!-- ATTACHMENTS TRAY -->
+							<div
+								id="attachmentTray"
+								class="composer-attachment-tray"
+								hidden
+							></div>
+
+							<!-- COMPOSER CARD -->
+							<form
+								id="chatForm"
+								class="ai-composer-card"
+								autocomplete="off"
 							>
-							<textarea
-								id="userInput"
-								rows="1"
-								placeholder="Ask me anything about your day..."
-							></textarea>
-							<div class="composer-actions">
-								<label class="attach-btn" for="fileInput">
-									<i
-										class="fas fa-paperclip"
-										aria-hidden="true"
-									></i>
-									Attach
-								</label>
-								<input
-									id="fileInput"
-									type="file"
-									multiple
-									hidden
-								/>
-								<label class="checkbox-row">
-									<input
-										id="includeProject"
-										type="checkbox"
-									/>
-									<span>Use project context</span>
-								</label>
-								<button
-									id="sendBtn"
-									class="primary-btn"
-									type="submit"
+								<label class="sr-only" for="userInput"
+									>Message Lavoro AI</label
 								>
-									<i
-										class="fas fa-paper-plane"
-										aria-hidden="true"
-									></i>
-									Send
+								<textarea
+									id="userInput"
+									rows="1"
+									placeholder="Ask Lavoro anything, plan your day, organize tasks..."
+									aria-label="AI prompt input"
+								></textarea>
+
+								<div class="composer-toolbar">
+									<div class="toolbar-left">
+										<!-- ATTACH BUTTON -->
+										<label
+											class="composer-tool-btn"
+											for="fileInput"
+											title="Attach documents or context"
+											tabindex="0"
+										>
+											<svg
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<path
+													d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
+												/>
+											</svg>
+											<span>Attach</span>
+										</label>
+										<input
+											id="fileInput"
+											type="file"
+											multiple
+											hidden
+										/>
+
+										<!-- QUICK CHIPS -->
+										<button
+											class="composer-chip-btn"
+											type="button"
+											data-quick-mode="planner"
+										>
+											Plan
+										</button>
+										<button
+											class="composer-chip-btn"
+											type="button"
+											data-quick-mode="tasks"
+										>
+											Tasks
+										</button>
+										<button
+											class="composer-chip-btn"
+											type="button"
+											data-quick-mode="knowledge"
+										>
+											Knowledge
+										</button>
+
+										<!-- CONTEXT CHECKBOX -->
+										<label
+											class="composer-checkbox-pill"
+											title="Include workspace source code context"
+										>
+											<input
+												id="includeProject"
+												type="checkbox"
+											/>
+											<span>Codebase</span>
+										</label>
+									</div>
+
+									<div class="toolbar-right">
+										<!-- VOICE INPUT BUTTON -->
+										<button
+											class="composer-icon-btn"
+											type="button"
+											id="voiceBtn"
+											title="Voice input (dictation)"
+											aria-label="Voice input"
+										>
+											<svg
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<path
+													d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+												/>
+												<path
+													d="M19 10v2a7 7 0 0 1-14 0v-2"
+												/>
+												<line
+													x1="12"
+													y1="19"
+													x2="12"
+													y2="23"
+												/>
+												<line
+													x1="8"
+													y1="23"
+													x2="16"
+													y2="23"
+												/>
+											</svg>
+										</button>
+
+										<!-- STOP STREAMING BUTTON -->
+										<button
+											class="composer-stop-btn"
+											type="button"
+											id="stopBtn"
+											title="Stop generation"
+											hidden
+										>
+											<span class="stop-square"></span>
+										</button>
+
+										<!-- SEND BUTTON -->
+										<button
+											class="composer-send-btn"
+											type="submit"
+											id="sendBtn"
+											title="Send message (Enter)"
+											aria-label="Send message"
+										>
+											<svg
+												class="send-arrow-icon"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<line
+													x1="12"
+													y1="19"
+													x2="12"
+													y2="5"
+												/>
+												<polyline
+													points="5 12 12 5 19 12"
+												/>
+											</svg>
+										</button>
+									</div>
+								</div>
+							</form>
+
+							<!-- QUICK CONTEXTUAL ACTIONS PILLS -->
+							<div
+								class="quick-actions-bar"
+								id="quickActionsBar"
+								aria-label="Suggested Actions"
+							>
+								<button
+									class="action-pill"
+									type="button"
+									data-prompt="Plan my day with a realistic schedule and focus blocks."
+								>
+									<span class="pill-sparkle">✦</span> Plan my
+									day
+								</button>
+								<button
+									class="action-pill"
+									type="button"
+									data-prompt="Show my top priorities and what I should tackle first."
+								>
+									<span class="pill-sparkle">⭐</span> Top
+									priorities
+								</button>
+								<button
+									class="action-pill"
+									type="button"
+									data-prompt="Summarize my morning briefing with weather, calendar, and urgent emails."
+								>
+									<span class="pill-sparkle">🌅</span> Morning
+									briefing
+								</button>
+								<button
+									class="action-pill"
+									type="button"
+									data-prompt="Help me create and prioritize 3 tasks for today."
+								>
+									<span class="pill-sparkle">✓</span> Create a
+									task
+								</button>
+								<button
+									class="action-pill"
+									type="button"
+									data-prompt="Set a reminder for 5:00 PM to review daily progress."
+								>
+									<span class="pill-sparkle">⏰</span> Set a
+									reminder
+								</button>
+								<button
+									class="action-pill"
+									type="button"
+									data-prompt="Search my knowledge base for recent notes and project docs."
+								>
+									<span class="pill-sparkle">🔍</span> Search
+									knowledge
 								</button>
 							</div>
-						</form>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: TASKS -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewTasks"
+						aria-label="Tasks and Priorities"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">Tasks & Priorities</h2>
+									<p class="pane-subtitle">
+										Eisenhower-prioritized tasks with
+										AI-assisted breakdowns.
+									</p>
+								</div>
+								<div class="pane-actions">
+									<button
+										class="btn-primary"
+										type="button"
+										id="quickAddTaskBtn"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<line
+												x1="12"
+												y1="5"
+												x2="12"
+												y2="19"
+											/>
+											<line
+												x1="5"
+												y1="12"
+												x2="19"
+												y2="12"
+											/>
+										</svg>
+										<span>New Task</span>
+									</button>
+								</div>
+							</div>
+
+							<!-- INLINE ADD TASK BAR -->
+							<form
+								id="inlineTaskForm"
+								class="inline-create-card"
+								autocomplete="off"
+							>
+								<input
+									type="text"
+									id="taskTitleInput"
+									placeholder="What needs to be done?"
+									required
+									aria-label="Task title"
+								/>
+								<div class="inline-create-controls">
+									<select
+										id="taskPriorityInput"
+										aria-label="Task priority"
+									>
+										<option value="high">
+											High Priority
+										</option>
+										<option value="medium" selected>
+											Medium Priority
+										</option>
+										<option value="low">
+											Low Priority
+										</option>
+									</select>
+									<input
+										type="text"
+										id="taskDueInput"
+										placeholder="Due date (e.g. Today, 5pm)"
+										value="Today"
+										aria-label="Task due date"
+									/>
+									<button class="btn-secondary" type="submit">
+										Add Task
+									</button>
+								</div>
+							</form>
+
+							<!-- FILTER TABS -->
+							<div
+								class="filter-tabs-bar"
+								role="tablist"
+								aria-label="Filter tasks"
+							>
+								<button
+									class="tab-btn active"
+									type="button"
+									data-task-filter="all"
+									role="tab"
+									aria-selected="true"
+								>
+									All Tasks
+								</button>
+								<button
+									class="tab-btn"
+									type="button"
+									data-task-filter="high"
+									role="tab"
+									aria-selected="false"
+								>
+									High Priority
+								</button>
+								<button
+									class="tab-btn"
+									type="button"
+									data-task-filter="medium"
+									role="tab"
+									aria-selected="false"
+								>
+									Medium
+								</button>
+								<button
+									class="tab-btn"
+									type="button"
+									data-task-filter="completed"
+									role="tab"
+									aria-selected="false"
+								>
+									Completed
+								</button>
+							</div>
+
+							<!-- TASK LIST CONTAINER -->
+							<div id="tasksListContainer" class="task-list-flow">
+								<!-- Populated by JS -->
+							</div>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: PLANNER -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewPlanner"
+						aria-label="Day Planner"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">Day Planner</h2>
+									<p class="pane-subtitle" id="plannerDateSubtitle">
+										Time-blocked schedule and deep-work
+										intervals.
+									</p>
+								</div>
+								<div class="pane-actions">
+									<button
+										class="btn-primary"
+										type="button"
+										id="aiPlanDayBtn"
+									>
+										<span class="pill-sparkle">✦</span>
+										<span>Let Lavoro plan my day</span>
+									</button>
+								</div>
+							</div>
+
+							<div class="planner-two-col">
+								<!-- TIMELINE COLUMN -->
+								<div class="timeline-card">
+									<div class="timeline-header">
+										<h3>Hourly Schedule</h3>
+										<span class="badge-subtle"
+											>Time Blocks</span
+										>
+									</div>
+									<div
+										id="plannerTimelineList"
+										class="planner-timeline"
+									>
+										<!-- Populated by JS -->
+									</div>
+								</div>
+
+								<!-- FOCUS PRIORITIES & GOALS COLUMN -->
+								<div class="planner-side-col">
+									<div class="side-card">
+										<div class="side-card-header">
+											<h3>Current Daily Goal</h3>
+										</div>
+										<p
+											class="goal-text"
+											id="plannerCurrentGoal"
+										>
+											Execute daily priorities efficiently
+											and maintain focus.
+										</p>
+									</div>
+
+									<div class="side-card">
+										<div class="side-card-header">
+											<h3>Scheduled Focus Tasks</h3>
+										</div>
+										<div
+											id="plannerFocusList"
+											class="focus-items-stack"
+										>
+											<!-- Populated by JS -->
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: REMINDERS -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewReminders"
+						aria-label="Reminders"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">
+										Reminders & Alerts
+									</h2>
+									<p class="pane-subtitle">
+										Chronological alerts to keep your day on
+										track.
+									</p>
+								</div>
+							</div>
+
+							<!-- INLINE ADD REMINDER BAR -->
+							<form
+								id="inlineReminderForm"
+								class="inline-create-card"
+								autocomplete="off"
+							>
+								<input
+									type="text"
+									id="reminderTitleInput"
+									placeholder="Remind me to..."
+									required
+									aria-label="Reminder title"
+								/>
+								<div class="inline-create-controls">
+									<input
+										type="text"
+										id="reminderWhenInput"
+										placeholder="When? (e.g. 10:30 AM, Tomorrow 9am)"
+										required
+										aria-label="Reminder time"
+									/>
+									<button class="btn-secondary" type="submit">
+										Set Reminder
+									</button>
+								</div>
+							</form>
+
+							<div
+								id="remindersListContainer"
+								class="reminders-timeline-flow"
+							>
+								<!-- Populated by JS -->
+							</div>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: DAILY BRIEFING -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewBriefing"
+						aria-label="Daily Briefing"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">
+										Your Daily Briefing
+									</h2>
+									<p
+										class="pane-subtitle"
+										id="briefingDateSubtitle"
+									>
+										A synthesized overview of your weather,
+										schedule, urgent messages, and tasks.
+									</p>
+								</div>
+								<div class="pane-actions">
+									<button
+										class="btn-secondary"
+										type="button"
+										id="refreshBriefingBtn"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline
+												points="23 4 23 10 17 10"
+											/>
+											<path
+												d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"
+											/>
+										</svg>
+										<span>Refresh</span>
+									</button>
+									<button
+										class="btn-primary"
+										type="button"
+										id="askAiBriefingBtn"
+									>
+										<span class="pill-sparkle">✦</span>
+										<span>Ask AI Briefing</span>
+									</button>
+								</div>
+							</div>
+
+							<!-- BRIEFING CARDS GRID -->
+							<div class="briefing-sections-grid">
+								<!-- FOCUS SECTION -->
+								<div class="briefing-card full-width focus-card">
+									<div class="briefing-card-header">
+										<span class="section-tag">Primary Focus</span>
+									</div>
+									<h3
+										class="focus-headline"
+										id="briefingGoalHeadline"
+									>
+										Execute daily priorities efficiently and
+										maintain deep focus
+									</h3>
+									<div class="focus-meta-pills">
+										<span class="meta-badge"
+											>Target: 3 Deep Work Blocks</span
+										>
+										<span class="meta-badge"
+											>Working Hours: 09:00 - 18:00</span
+										>
+									</div>
+								</div>
+
+								<!-- WEATHER & ENVIRONMENT -->
+								<div class="briefing-card">
+									<div class="briefing-card-header">
+										<span class="section-tag"
+											>Weather & Outlook</span
+										>
+									</div>
+									<div
+										id="briefingWeatherContent"
+										class="briefing-card-body"
+									>
+										<!-- Populated by JS -->
+									</div>
+								</div>
+
+								<!-- URGENT EMAILS SCAN -->
+								<div class="briefing-card">
+									<div class="briefing-card-header">
+										<span class="section-tag"
+											>Email Triage</span
+										>
+									</div>
+									<div
+										id="briefingEmailContent"
+										class="briefing-card-body"
+									>
+										<!-- Populated by JS -->
+									</div>
+								</div>
+
+								<!-- TOP 3 PRIORITY TASKS -->
+								<div class="briefing-card">
+									<div class="briefing-card-header">
+										<span class="section-tag"
+											>Urgent Tasks Due Today</span
+										>
+									</div>
+									<div
+										id="briefingTasksContent"
+										class="briefing-card-body"
+									>
+										<!-- Populated by JS -->
+									</div>
+								</div>
+
+								<!-- UPCOMING CALENDAR & REMINDERS -->
+								<div class="briefing-card">
+									<div class="briefing-card-header">
+										<span class="section-tag"
+											>Schedule & Reminders</span
+										>
+									</div>
+									<div
+										id="briefingScheduleContent"
+										class="briefing-card-body"
+									>
+										<!-- Populated by JS -->
+									</div>
+								</div>
+							</div>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: KNOWLEDGE / RAG -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewKnowledge"
+						aria-label="Knowledge Base"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">Knowledge Base</h2>
+									<p class="pane-subtitle">
+										Lavoro remembers your notes, project
+										docs, and key references.
+									</p>
+								</div>
+								<div class="pane-actions">
+									<button
+										class="btn-primary"
+										type="button"
+										id="addDocBtn"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<line
+												x1="12"
+												y1="5"
+												x2="12"
+												y2="19"
+											/>
+											<line
+												x1="5"
+												y1="12"
+												x2="19"
+												y2="12"
+											/>
+										</svg>
+										<span>Add Note / Document</span>
+									</button>
+								</div>
+							</div>
+
+							<!-- KNOWLEDGE SEARCH BAR -->
+							<form
+								id="knowledgeSearchForm"
+								class="knowledge-search-card"
+							>
+								<div class="search-input-wrap">
+									<svg
+										class="search-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<circle cx="11" cy="11" r="8" />
+										<line
+											x1="21"
+											y1="21"
+											x2="16.65"
+											y2="16.65"
+										/>
+									</svg>
+									<input
+										type="text"
+										id="knowledgeQueryInput"
+										placeholder="Search your notes and indexed knowledge with semantic matching..."
+										aria-label="Search knowledge"
+									/>
+									<button class="btn-primary" type="submit">
+										Search
+									</button>
+								</div>
+							</form>
+
+							<!-- SEARCH RESULTS CONTAINER -->
+							<div
+								id="knowledgeSearchResults"
+								class="knowledge-results-stack"
+								hidden
+							>
+								<div class="results-meta-header">
+									<h3 id="knowledgeResultsTitle">
+										Search Results
+									</h3>
+									<button
+										class="text-link-btn"
+										type="button"
+										id="clearKnowledgeSearchBtn"
+									>
+										Clear results
+									</button>
+								</div>
+								<div
+									id="knowledgeResultsList"
+									class="results-list"
+								></div>
+							</div>
+
+							<!-- RECENT MEMORY / INDEXED DOCUMENTS -->
+							<div class="knowledge-recent-section">
+								<h3 class="section-heading-sub">
+									Indexed Knowledge & Memory
+								</h3>
+								<div
+									id="knowledgeDocumentsList"
+									class="docs-grid"
+								>
+									<!-- Populated by JS -->
+								</div>
+							</div>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: CONVERSATIONS -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewConversations"
+						aria-label="Conversations"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">
+										Conversation History
+									</h2>
+									<p class="pane-subtitle">
+										Review previous AI exchanges and
+										sessions.
+									</p>
+								</div>
+								<div class="pane-actions">
+									<button
+										class="btn-secondary"
+										type="button"
+										id="resetChatFromHistoryBtn"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+										<span>Clear Conversation</span>
+									</button>
+								</div>
+							</div>
+
+							<div
+								id="conversationsListContainer"
+								class="conversations-history-flow"
+							>
+								<!-- Populated by JS -->
+							</div>
+						</div>
+					</section>
+
+					<!-- ============================================== -->
+					<!-- VIEW: DASHBOARD -->
+					<!-- ============================================== -->
+					<section
+						class="view-pane"
+						id="viewDashboard"
+						aria-label="Dashboard"
+						hidden
+					>
+						<div class="view-content-wrapper">
+							<div class="pane-header">
+								<div>
+									<h2 class="pane-title">
+										Productivity Metrics
+									</h2>
+									<p class="pane-subtitle">
+										Meaningful productivity signals and
+										work accomplishments.
+									</p>
+								</div>
+								<div class="pane-actions">
+									<button
+										class="btn-secondary"
+										type="button"
+										id="refreshDashboardBtn"
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline
+												points="23 4 23 10 17 10"
+											/>
+											<path
+												d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"
+											/>
+										</svg>
+										<span>Refresh</span>
+									</button>
+								</div>
+							</div>
+
+							<!-- METRICS BLOCKS -->
+							<div
+								id="dashboardMetricsGrid"
+								class="dashboard-metrics-grid"
+							>
+								<!-- Populated by JS -->
+							</div>
+
+							<!-- BREAKDOWN CARD -->
+							<div class="dashboard-breakdown-card">
+								<div class="breakdown-header">
+									<h3>Task Priority Distribution</h3>
+									<span class="badge-subtle"
+										>Active Workload</span
+									>
+								</div>
+								<div
+									id="dashboardPriorityBars"
+									class="priority-bars-container"
+								>
+									<!-- Populated by JS -->
+								</div>
+							</div>
+						</div>
 					</section>
 				</main>
 			</div>
 		</div>
+
+		<!-- ============================================== -->
+		<!-- SETTINGS & PROFILE MODAL -->
+		<!-- ============================================== -->
+		<div
+			class="modal-backdrop"
+			id="settingsModal"
+			role="dialog"
+			aria-labelledby="settingsModalTitle"
+			aria-modal="true"
+			hidden
+		>
+			<div class="modal-card">
+				<div class="modal-header">
+					<h3 id="settingsModalTitle">Settings & Profile</h3>
+					<button
+						class="modal-close-btn"
+						type="button"
+						id="closeSettingsBtn"
+						aria-label="Close settings"
+					>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<line x1="18" y1="6" x2="6" y2="18" />
+							<line x1="6" y1="6" x2="18" y2="18" />
+						</svg>
+					</button>
+				</div>
+
+				<div class="modal-body">
+					<!-- PROFILE FORM -->
+					<form id="profileForm" class="settings-form">
+						<h4 class="form-group-title">Personal Profile</h4>
+						<div class="form-row">
+							<label for="profileName">Full Name</label>
+							<input
+								type="text"
+								id="profileName"
+								value="Umesh Kumar"
+								required
+							/>
+						</div>
+
+						<div class="form-row">
+							<label for="profileRole">Role / Title</label>
+							<input
+								type="text"
+								id="profileRole"
+								value="Professional"
+							/>
+						</div>
+
+						<div class="form-row">
+							<label for="profileGoal">Primary Focus Goal</label>
+							<input
+								type="text"
+								id="profileGoal"
+								value="Execute daily priorities efficiently and maintain focus"
+							/>
+						</div>
+
+						<div class="form-row">
+							<label for="profileWorkingHours"
+								>Daily Working Hours</label
+							>
+							<input
+								type="text"
+								id="profileWorkingHours"
+								value="09:00 - 18:00"
+							/>
+						</div>
+
+						<div class="form-actions">
+							<button class="btn-primary" type="submit">
+								Save Profile Changes
+							</button>
+						</div>
+					</form>
+
+					<hr class="modal-divider" />
+
+					<!-- ACCOUNT & AUTH -->
+					<div class="settings-section">
+						<h4 class="form-group-title">Account & Demo Access</h4>
+						<p class="section-note">
+							Active session:
+							<code id="activeSessionCode" class="inline-code"
+								>lavoro-guest</code
+							>
+						</p>
+						<div class="auth-quick-actions">
+							<button
+								class="btn-secondary"
+								type="button"
+								id="demoLoginBtn"
+							>
+								Demo Admin Sign-in
+							</button>
+							<button
+								class="btn-secondary"
+								type="button"
+								id="logoutBtn"
+							>
+								Reset Session
+							</button>
+						</div>
+					</div>
+
+					<hr class="modal-divider" />
+
+					<!-- SYSTEM DIAGNOSTICS -->
+					<div class="settings-section">
+						<h4 class="form-group-title">System & API</h4>
+						<div class="diagnostics-list">
+							<div class="diag-item">
+								<span>AI Model</span>
+								<strong id="diagModel">Gemini 3 Flash</strong>
+							</div>
+							<div class="diag-item">
+								<span>Backend Architecture</span>
+								<span>Express + SQLite + Vector RAG</span>
+							</div>
+							<div class="diag-item">
+								<span>Interactive API Docs</span>
+								<a
+									href="/api/docs"
+									target="_blank"
+									rel="noopener"
+									class="text-link"
+									>Swagger UI (/api/docs)</a
+								>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ============================================== -->
+		<!-- ADD DOCUMENT MODAL -->
+		<!-- ============================================== -->
+		<div
+			class="modal-backdrop"
+			id="docModal"
+			role="dialog"
+			aria-labelledby="docModalTitle"
+			aria-modal="true"
+			hidden
+		>
+			<div class="modal-card">
+				<div class="modal-header">
+					<h3 id="docModalTitle">Add Note or Document</h3>
+					<button
+						class="modal-close-btn"
+						type="button"
+						id="closeDocBtn"
+						aria-label="Close modal"
+					>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<line x1="18" y1="6" x2="6" y2="18" />
+							<line x1="6" y1="6" x2="18" y2="18" />
+						</svg>
+					</button>
+				</div>
+				<form id="addDocForm" class="modal-body settings-form">
+					<div class="form-row">
+						<label for="docTitle">Title</label>
+						<input
+							type="text"
+							id="docTitle"
+							placeholder="e.g. Q4 Strategy Notes, Project Requirements"
+							required
+						/>
+					</div>
+					<div class="form-row">
+						<label for="docCategory">Category / Tags</label>
+						<input
+							type="text"
+							id="docCategory"
+							placeholder="e.g. planning, personal, architecture"
+							value="notes"
+						/>
+					</div>
+					<div class="form-row">
+						<label for="docContent">Content</label>
+						<textarea
+							id="docContent"
+							rows="5"
+							placeholder="Paste document text, meeting notes, or project information..."
+							required
+						></textarea>
+					</div>
+					<div class="form-actions">
+						<button class="btn-primary" type="submit">
+							Index into Knowledge Base
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<!-- TOAST NOTIFICATIONS CONTAINER -->
+		<div
+			id="toastContainer"
+			class="toast-container"
+			aria-live="polite"
+		></div>
+
 		<script src="script.js"></script>
 	</body>
 </html>
