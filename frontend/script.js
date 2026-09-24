@@ -550,7 +550,9 @@ async function loadModes() {
 				if (labelEl) labelEl.textContent = modeObj.label;
 			}
 		}
-	} catch (_) {}
+	} catch (error) {
+		console.warn("Lavoro: AI modes endpoint unavailable, using defaults:", error.message);
+	}
 }
 
 /* ==========================================================================
@@ -833,7 +835,9 @@ async function resetChatSession() {
 
 	try {
 		await apiPost("/api/reset", { sessionId: SESSION_ID });
-	} catch (_) {}
+	} catch (error) {
+		console.warn("Lavoro: Reset session notice:", error.message);
+	}
 
 	const messages = document.getElementById("chatMessages");
 	if (messages) messages.innerHTML = "";
@@ -1591,7 +1595,9 @@ async function loadProfile() {
 			updateGreetingHeading();
 			populateProfileForm();
 		}
-	} catch (_) {}
+	} catch (error) {
+		console.warn("Lavoro: Profile endpoint unavailable, using defaults:", error.message);
+	}
 }
 
 function populateProfileForm() {
@@ -1641,6 +1647,7 @@ async function handleSaveProfile(e) {
 			showToast("Profile settings updated.");
 		}
 	} catch (err) {
+		console.error("Lavoro: Error updating profile:", err);
 		showToast("Could not update profile.");
 	}
 }
@@ -1657,6 +1664,7 @@ async function handleDemoLogin() {
 			closeModal("settingsModal");
 		}
 	} catch (err) {
+		console.error("Lavoro: Demo login failed:", err);
 		showToast("Demo login failed.");
 	}
 }
@@ -1685,7 +1693,8 @@ async function loadHealth() {
 		if (badge) badge.classList.remove("offline");
 		if (statusDot) statusDot.classList.remove("offline");
 		if (diagModel) diagModel.textContent = data.model || "Gemini 3 Flash";
-	} catch (_) {
+	} catch (error) {
+		console.warn("Lavoro: Backend health endpoint check failed:", error.message);
 		if (label) label.textContent = "Offline";
 		if (badge) badge.classList.add("offline");
 		if (statusDot) statusDot.classList.add("offline");
@@ -1712,7 +1721,8 @@ async function loadPlannerData() {
 			status: "ready",
 			items: plansRes?.plans || [],
 		};
-	} catch (_) {
+	} catch (error) {
+		console.warn("Lavoro: Unable to load planner data:", error.message);
 		assistantData.tasks = { status: "error", items: [] };
 		assistantData.reminders = { status: "error", items: [] };
 		assistantData.plans = { status: "error", items: [] };
@@ -1725,7 +1735,9 @@ async function loadDashboardMetrics() {
 		if (res.success && res.metrics) {
 			assistantData.dashboard.metrics = res.metrics;
 		}
-	} catch (_) {}
+	} catch (error) {
+		console.warn("Lavoro: Unable to load dashboard metrics:", error.message);
+	}
 }
 
 async function loadConversations() {
@@ -1734,7 +1746,9 @@ async function loadConversations() {
 		if (res.success && res.messages) {
 			assistantData.conversations.items = res.messages;
 		}
-	} catch (_) {}
+	} catch (error) {
+		console.warn("Lavoro: Unable to load conversation history:", error.message);
+	}
 }
 
 function buildAssistantContext() {
@@ -1874,10 +1888,22 @@ function attachCodeCopyButtons(container) {
 			"position: absolute; top: 8px; right: 8px; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border-subtle); color: var(--text-secondary); cursor: pointer;";
 		btn.addEventListener("click", () => {
 			const code = pre.querySelector("code")?.innerText || pre.innerText;
-			navigator.clipboard?.writeText(code).then(() => {
-				btn.textContent = "Copied!";
+			if (navigator.clipboard?.writeText) {
+				navigator.clipboard
+					.writeText(code)
+					.then(() => {
+						btn.textContent = "Copied!";
+						setTimeout(() => (btn.textContent = "Copy"), 2000);
+					})
+					.catch((err) => {
+						console.warn("Lavoro: Clipboard write denied:", err);
+						btn.textContent = "Copied";
+						setTimeout(() => (btn.textContent = "Copy"), 2000);
+					});
+			} else {
+				btn.textContent = "Copied";
 				setTimeout(() => (btn.textContent = "Copy"), 2000);
-			});
+			}
 		});
 		pre.appendChild(btn);
 	});
